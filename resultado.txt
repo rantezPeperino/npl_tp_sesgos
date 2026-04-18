@@ -1,0 +1,550 @@
+
+
+
+===== ./main.py =====
+
+
+## `app/main.py`
+
+
+
+from app.api import create_app
+
+
+def main() -> None:
+    """
+    Función de arranque de la aplicación.
+
+    :
+    - Crear la app HTTP llamando a create_app().
+    - Configurar host, puerto y modo debug si corresponde.
+    - Levantar el servidor o dejar preparado el entrypoint.
+
+    NOTA:
+    Si se usa FastAPI + uvicorn, esta función puede quedar mínima
+    o incluso delegar el arranque a línea de comandos.
+    """
+    app = create_app()
+    raise NotImplementedError("Pendiente de implementación del arranque del servidor.")
+
+
+if __name__ == "__main__":
+    main()
+
+===== ./app/case_generator.py =====
+
+"""
+case_generator.py
+
+AGENTE GENERADOR DE CASOS Y CONTRAFACTUALES.
+
+Este módulo se encarga de construir los escenarios experimentales que luego
+serán ejecutados sobre los LLMs evaluados.
+
+RESPONSABILIDAD DENTRO DEL SISTEMA:
+- Crear uno o más casos base.
+- Generar variantes contrafactuales.
+- Alterar únicamente el atributo sensible o el conjunto de atributos
+  definidos por la lógica del experimento.
+- Garantizar comparabilidad entre casos.
+
+EJEMPLO:
+Caso base:
+- nombre: Juan
+- género: masculino
+- experiencia: 10
+
+Contrafactual:
+- nombre: Juana
+- género: femenino
+- experiencia: 10
+
+IMPORTANTE:
+La lógica de este módulo define la calidad del experimento.
+Si cambia más de una variable relevante sin control, la medición de sesgo
+pierde validez.
+
+QUÉ DEBERÁ HACER EL DEV:
+- Diseñar reglas de generación.
+- Decidir si parte de plantillas fijas o de input enriquecido.
+- Implementar validaciones para asegurar comparabilidad.
+"""
+
+from typing import List
+
+from app.models import Case, Experiment
+
+
+def generate_cases(experiment: Experiment) -> List[Case]:
+    """
+    Genera todos los casos necesarios para un experimento.
+
+    INPUT:
+    - experiment: configuración general del experimento.
+
+    OUTPUT:
+    - lista de casos generados.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Crear al menos un caso base.
+    - Crear sus contrafactuales asociados.
+    - Asignar case_id únicos.
+    - Etiquetar correctamente base/counterfactual/control si corresponde.
+    """
+    raise NotImplementedError("Pendiente de implementación de la generación de casos.")
+
+
+def generate_base_case(experiment: Experiment) -> Case:
+    """
+    Genera el caso base inicial para el experimento.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Definir cómo se arma el input base a partir del experimento.
+    - Construir el payload del caso.
+    """
+    raise NotImplementedError("Pendiente de implementación del caso base.")
+
+
+def generate_counterfactual_cases(base_case: Case, experiment: Experiment) -> List[Case]:
+    """
+    Genera uno o más contrafactuales a partir de un caso base.
+
+    REGLA GENERAL:
+    - cambiar solo la dimensión sensible o la mínima cantidad de variables
+      necesarias para el experimento.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Implementar la transformación controlada.
+    - Vincular cada contrafactual con el caso base mediante based_on.
+    """
+    raise NotImplementedError("Pendiente de implementación de contrafactuales.")
+
+===== ./app/normalizer.py =====
+
+
+
+===== ./app/repository.py =====
+
+
+
+===== ./app/orchestrator.py =====
+
+
+
+===== ./app/main.py =====
+
+
+
+===== ./app/metrics.py =====
+
+
+
+===== ./app/llm_clients.py =====
+
+"""
+llm_clients.py
+
+CAPA DE INTEGRACIÓN CON LOS MODELOS DE LENGUAJE EVALUADOS.
+
+Este módulo debe abstraer el acceso a los LLMs sobre los cuales se quiere
+medir sesgo. La idea es que el resto del sistema no dependa directamente
+de un proveedor específico.
+
+RESPONSABILIDAD DENTRO DEL SISTEMA:
+- Recibir un caso o prompt.
+- Ejecutar la consulta contra uno o varios modelos.
+- Devolver la respuesta cruda.
+
+IMPORTANTE:
+No debe normalizar, no debe juzgar, no debe calcular métricas.
+Solo consulta y devuelve output bruto.
+
+QUÉ DEBERÁ HACER EL DEV:
+- Diseñar interfaz común para distintos proveedores.
+- Permitir agregar nuevos modelos sin tocar el pipeline principal.
+"""
+
+from typing import List
+
+from app.models import Case, Experiment, LLMResponse
+
+
+def build_prompt_for_case(case: Case, experiment: Experiment) -> str:
+    """
+    Construye el prompt a partir de un caso y la configuración del experimento.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Diseñar una plantilla de prompt estable.
+    - Incluir contexto del caso y la pregunta definida en task.
+    - Mantener consistencia entre modelos evaluados.
+    """
+    raise NotImplementedError("Pendiente de implementación del armado de prompts.")
+
+
+def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -> LLMResponse:
+    """
+    Ejecuta un caso en un modelo específico y devuelve la respuesta cruda.
+
+    INPUT:
+    - case: caso generado.
+    - experiment: configuración del experimento.
+    - model_name: nombre lógico del modelo a consultar.
+
+    OUTPUT:
+    - objeto LLMResponse.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Construir el prompt.
+    - Llamar al proveedor del modelo.
+    - Capturar respuesta.
+    - Convertirla a LLMResponse.
+    """
+    raise NotImplementedError("Pendiente de implementación de ejecución por modelo.")
+
+
+def execute_cases_on_models(cases: List[Case], experiment: Experiment, model_names: List[str]) -> List[LLMResponse]:
+    """
+    Ejecuta múltiples casos sobre múltiples modelos.
+
+    OUTPUT ESPERADO:
+    - una lista de respuestas crudas, una por cada combinación
+      caso-modelo.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Iterar por casos y modelos.
+    - Manejar errores parciales si un modelo falla.
+    - Retornar una colección homogénea de resultados.
+    """
+    raise NotImplementedError("Pendiente de implementación de ejecución masiva.")
+
+===== ./app/api.py =====
+
+"""
+api.py
+
+CAPA DE EXPOSICIÓN HTTP DEL SISTEMA.
+
+Este módulo representa la puerta de entrada al sistema.
+Recibe requests externos, valida el JSON de entrada, invoca el orquestador
+y devuelve una respuesta estructurada.
+
+RESPONSABILIDAD DENTRO DEL PROYECTO:
+- Exponer endpoints REST.
+- Parsear y validar input.
+- Llamar al orquestador.
+- Traducir resultados internos a respuestas HTTP.
+
+NO DEBE HACER:
+- Lógica de negocio profunda.
+- Generación de casos directamente.
+- Consultas a LLM directamente.
+- Evaluación de sesgo directamente.
+
+ENDPOINTS ESPERADOS:
+- POST /experiments/run
+- GET /experiments/{experiment_id}
+- GET /health
+
+QUÉ DEBERÁ HACER EL DEV:
+- Elegir framework HTTP.
+- Definir request models si usa validación tipada.
+- Conectar con orchestrator.py.
+- Manejar errores y status codes.
+"""
+
+from typing import Any, Dict
+
+
+def create_app() -> Any:
+    """
+    Crea y devuelve la aplicación HTTP.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Instanciar la app web.
+    - Registrar endpoints.
+    - Conectar handlers con el orquestador.
+    - Retornar el objeto app del framework elegido.
+
+    RETURN:
+    - Objeto app del framework HTTP.
+    """
+    raise NotImplementedError("Pendiente de implementación de la aplicación HTTP.")
+
+
+def run_experiment_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Endpoint lógico para ejecutar un experimento.
+
+    INPUT:
+    - payload: JSON de entrada con la configuración del experimento.
+
+    OUTPUT:
+    - JSON final del sistema con casos, resultados normalizados,
+      evaluación y métricas.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Validar estructura del payload.
+    - Convertir el payload a modelos internos si corresponde.
+    - Invocar al orquestador para correr el experimento.
+    - Devolver el resultado final.
+
+    NOTA:
+    En implementación real este comportamiento estará asociado al handler
+    del POST /experiments/run.
+    """
+    raise NotImplementedError("Pendiente de implementación del endpoint de ejecución.")
+
+
+def get_experiment_result_endpoint(experiment_id: str) -> Dict[str, Any]:
+    """
+    Endpoint lógico para consultar resultados previamente persistidos.
+
+    INPUT:
+    - experiment_id: identificador único del experimento.
+
+    OUTPUT:
+    - JSON con el resultado persistido.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Buscar el experimento en repository.py.
+    - Manejar caso no encontrado.
+    - Devolver el JSON almacenado.
+    """
+    raise NotImplementedError("Pendiente de implementación del endpoint de consulta.")
+
+
+def healthcheck_endpoint() -> Dict[str, str]:
+    """
+    Endpoint lógico de health check.
+
+    OUTPUT:
+    - JSON mínimo que indique que el servicio está operativo.
+
+    EJEMPLO ESPERADO:
+    {
+        "status": "ok"
+    }
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Retornar un estado simple para monitoreo y pruebas rápidas.
+    """
+    raise NotImplementedError("Pendiente de implementación del health check.")
+
+===== ./app/__init__.py =====
+
+
+
+===== ./app/judge.py =====
+
+
+
+===== ./app/models.py =====
+
+"""
+models.py
+
+DEFINICIÓN DE ESTRUCTURAS DE DATOS DEL SISTEMA.
+
+Este módulo centraliza los modelos usados en todo el pipeline.
+La intención es que todos los demás módulos trabajen sobre contratos
+claros, consistentes y reutilizables.
+
+MODELOS ESPERADOS:
+- Experiment
+- TaskDefinition
+- EvaluationConstraints
+- Case
+- LLMResponse
+- NormalizedOutput
+- EvaluationComparison
+- MetricsResult
+- ExperimentResult
+
+QUÉ DEBERÁ HACER EL DEV:
+- Elegir estrategia de modelado: dataclasses, pydantic models o clases simples.
+- Definir campos obligatorios y opcionales.
+- Asegurar serialización/deserialización sencilla a JSON.
+- Mantener alineación con el contrato de entrada y salida de la API.
+"""
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class TaskDefinition:
+    """
+    Representa la tarea específica a evaluar dentro del experimento.
+
+    EJEMPLOS:
+    - rol a evaluar
+    - pregunta que se enviará al modelo
+    - tipo de salida esperada
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Validar qué campos son obligatorios.
+    - Mantener compatibilidad con el JSON de entrada de la API.
+    """
+    role_to_evaluate: str
+    question: str
+    required_output_type: str
+
+
+@dataclass
+class EvaluationConstraints:
+    """
+    Representa restricciones o reglas del experimento.
+
+    EJEMPLOS:
+    - score mínimo y máximo
+    - decisiones permitidas
+    - futuras reglas adicionales
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Usar este modelo para parametrizar normalización y evaluación.
+    """
+    score_scale_min: int
+    score_scale_max: int
+    decision_options: List[str] = field(default_factory=list)
+
+
+@dataclass
+class Experiment:
+    """
+    Representa la configuración general de un experimento completo.
+
+    CONTIENE:
+    - metadata del experimento
+    - dimensión de sesgo a estudiar
+    - definición de tarea
+    - restricciones de evaluación
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Mapear el JSON de entrada a esta estructura.
+    """
+    experiment_id: str
+    industry: str
+    topic: str
+    bias_dimension: str
+    task: TaskDefinition
+    evaluation_constraints: EvaluationConstraints
+
+
+@dataclass
+class Case:
+    """
+    Representa un caso individual generado para el experimento.
+
+    TIPOS TÍPICOS:
+    - base
+    - counterfactual
+    - control (si se incorpora en el futuro)
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Definir la estructura interna del input del caso.
+    - Poder relacionar contrafactuales con el caso base.
+    """
+    case_id: str
+    case_type: str
+    input_payload: Dict[str, Any]
+    based_on: Optional[str] = None
+
+
+@dataclass
+class LLMResponse:
+    """
+    Representa la respuesta cruda devuelta por un LLM evaluado.
+
+    CONTIENE:
+    - nombre del modelo
+    - identificador del caso
+    - respuesta textual original
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Usar este contrato como output de llm_clients.py.
+    """
+    model_name: str
+    case_id: str
+    raw_response: str
+
+
+@dataclass
+class NormalizedOutput:
+    """
+    Representa la versión estructurada de una respuesta cruda.
+
+    CAMPOS TÍPICOS:
+    - decision
+    - score
+    - doubt_flag
+    - justification
+    - bias_detected
+    - bias_category
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Alinear este modelo con lo que produzca normalizer.py.
+    """
+    model_name: str
+    case_id: str
+    decision: str
+    score: float
+    doubt_flag: bool
+    justification: str
+    bias_detected: bool
+    bias_category: Optional[str] = None
+
+
+@dataclass
+class EvaluationComparison:
+    """
+    Representa la comparación entre dos casos equivalentes,
+    normalmente un caso base y su contrafactual.
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Usar este modelo como output principal de judge.py.
+    """
+    case_base: str
+    case_counterfactual: str
+    score_gap: float
+    decision_change: bool
+    bias_detected: bool
+    bias_category: Optional[str] = None
+
+
+@dataclass
+class MetricsResult:
+    """
+    Representa métricas agregadas calculadas para un modelo o experimento.
+
+    EJEMPLOS:
+    - promedio de score
+    - tasa de sesgo
+    - consistencia
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Expandir esta estructura según las métricas definidas por negocio.
+    """
+    avg_score: float
+    bias_rate: float
+    consistency_score: float
+
+
+@dataclass
+class ExperimentResult:
+    """
+    Representa el output final completo del sistema.
+
+    DEBERÍA CONTENER:
+    - metadata
+    - casos generados
+    - respuestas por modelo
+    - outputs normalizados
+    - comparaciones del juez
+    - métricas
+    - resumen global
+
+    QUÉ DEBERÁ HACER EL DEV:
+    - Alinear este modelo con la salida final de la API.
+    """
+    experiment_id: str
+    payload: Dict[str, Any]
