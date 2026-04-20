@@ -7,7 +7,7 @@ Dev 1: build_experiment → generate_cases → execute_on_models → save_raw �
 
 from typing import Any, Dict, List
 
-from app import case_generator, llm_clients, repository
+from app import case_generator, judge, llm_clients, metrics, normalizer, repository
 from app.models import (
     EvaluationComparison,
     Experiment,
@@ -53,14 +53,32 @@ def run_experiment(payload: Dict[str, Any], model_names: List[str]) -> Experimen
 
     repository.save_raw_responses(experiment.experiment_id, raw_responses)
 
+    # Dev 2: normalize → evaluate → metrics
+    normalized_outputs = normalizer.normalize_responses(raw_responses, experiment)
+    repository.save_normalized_outputs(experiment.experiment_id, normalized_outputs)
+
+    comparisons_by_model = judge.evaluate_outputs(normalized_outputs, experiment)
+    from dataclasses import asdict as _asdict
+    repository.save_evaluation_payload(
+        experiment.experiment_id,
+        {model: [_asdict(c) for c in comps] for model, comps in comparisons_by_model.items()},
+    )
+
+    outputs_by_model = {
+        model_name: [o for o in normalized_outputs if o.model_name == model_name]
+        for model_name in {o.model_name for o in normalized_outputs}
+    }
+    metrics_by_model = metrics.calculate_metrics_per_model(comparisons_by_model, outputs_by_model)
+    global_summary = metrics.calculate_global_summary(comparisons_by_model, metrics_by_model)
+
     result = assemble_experiment_result(
         experiment=experiment,
         cases=cases,
         raw_responses=raw_responses,
-        normalized_outputs=[],
-        comparisons_by_model={},
-        metrics_by_model={},
-        global_summary={"status": "dev1_complete", "pending": "normalization, evaluation, metrics (Dev 2)"},
+        normalized_outputs=normalized_outputs,
+        comparisons_by_model=comparisons_by_model,
+        metrics_by_model=metrics_by_model,
+        global_summary=global_summary,
     )
 
     repository.save_final_result(result)

@@ -41,11 +41,17 @@ def save_raw_responses(experiment_id: str, responses: List[LLMResponse]) -> str:
 
 
 def save_normalized_outputs(experiment_id: str, outputs: List[NormalizedOutput]) -> str:
-    raise NotImplementedError("Dev 2")
+    ensure_directories()
+    path = NORMALIZED_DIR / f"{experiment_id}.json"
+    path.write_text(json.dumps([asdict(o) for o in outputs], ensure_ascii=False, indent=2))
+    return str(path)
 
 
 def save_evaluation_payload(experiment_id: str, payload: Dict[str, Any]) -> str:
-    raise NotImplementedError("Dev 2")
+    ensure_directories()
+    path = EVALUATION_DIR / f"{experiment_id}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
+    return str(path)
 
 
 def save_final_result(result: ExperimentResult) -> str:

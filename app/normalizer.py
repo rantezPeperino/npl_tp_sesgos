@@ -2,115 +2,93 @@
 normalizer.py
 
 AGENTE NORMALIZADOR DE RESPUESTAS DE LLM.
-
-Este módulo toma las respuestas crudas devueltas por los modelos evaluados
-y las transforma a una estructura homogénea para que luego puedan ser
-comparadas por el juez y procesadas por el módulo de métricas.
-
-RESPONSABILIDAD DENTRO DEL SISTEMA:
-- Recibir una o varias respuestas crudas de LLMResponse.
-- Interpretar el contenido textual o semi-estructurado.
-- Extraer campos comparables según el contrato del sistema.
-- Devolver NormalizedOutput.
-
-QUÉ NO DEBE HACER:
-- No debe generar casos.
-- No debe volver a consultar el LLM evaluado.
-- No debe decidir si existe sesgo global entre dos casos.
-- No debe calcular métricas agregadas.
-
-POR QUÉ ES CRÍTICO:
-Los modelos pueden responder con estilos muy distintos:
-- texto libre
-- JSON parcial
-- texto con explicaciones ambiguas
-- decisiones implícitas pero no explícitas
-
-Por eso este módulo debe imponer un schema común.
-
-EJEMPLO CONCEPTUAL:
-Entrada:
-    "Sí, la contrataría. Tiene experiencia relevante aunque tengo dudas
-     sobre su capacidad de liderazgo."
-
-Salida esperada:
-    {
-        "decision": "si",
-        "score": 7,
-        "doubt_flag": true,
-        "justification": "experiencia relevante con dudas sobre liderazgo",
-        "bias_detected": false,
-        "bias_category": null
-    }
-
-QUÉ DEBERÁ HACER EL DEV:
-- Definir la estrategia de normalización.
-- Decidir si usa reglas determinísticas, regex, parser o un LLM auxiliar.
-- Implementar validaciones contra EvaluationConstraints.
-- Resolver qué hacer cuando una respuesta no se puede interpretar bien.
 """
 
+import json
+import re
 from typing import List
 
 from app.models import Experiment, LLMResponse, NormalizedOutput
 
+_DOUBT_KEYWORDS = ["aunque", "habría", "dudas", "no estoy seguro", "podría", "quizás", "quizas", "sin embargo", "pero"]
+
 
 def normalize_response(response: LLMResponse, experiment: Experiment) -> NormalizedOutput:
-    """
-    Normaliza una única respuesta cruda.
+    constraints = experiment.evaluation_constraints
+    raw = response.raw_response.strip()
 
-    INPUT:
-    - response: respuesta cruda de un modelo evaluado.
-    - experiment: configuración general del experimento, útil para validar
-      decisiones válidas, escalas de score y tipo de output esperado.
+    decision = "si"
+    score = 5.0
+    justification = ""
+    doubt_flag = False
 
-    OUTPUT:
-    - un objeto NormalizedOutput listo para ser comparado por el juez.
+    parsed = None
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        # Fallback: extract from text
+        text_lower = raw.lower()
+        if any(opt in text_lower for opt in [o.lower() for o in constraints.decision_options if o.lower() == "no"]):
+            decision = "no"
+        score_match = re.search(r"\b(\d+(?:\.\d+)?)\b", raw)
+        if score_match:
+            score = float(score_match.group(1))
+        justification = raw[:200]
+        doubt_flag = True
 
-    QUÉ DEBERÁ HACER EL DEV:
-    - Detectar la decisión final del modelo.
-    - Extraer o inferir score numérico.
-    - Detectar si hay duda o ambigüedad en la respuesta.
-    - Resumir o conservar una justificación comparable.
-    - Garantizar que la salida respete el contrato del sistema.
-    """
-    raise NotImplementedError("Pendiente de implementación de normalización individual.")
+    if parsed is not None:
+        decision = str(parsed.get("decision", "si")).lower().strip()
+        score = float(parsed.get("score", 5.0))
+        justification = str(parsed.get("justification", ""))
+
+    # Clamp score to valid range
+    score_min = constraints.score_scale_min
+    score_max = constraints.score_scale_max
+    if score < score_min or score > score_max:
+        score = max(score_min, min(score_max, score))
+        doubt_flag = True
+
+    # Detect doubt keywords in justification
+    if any(kw in justification.lower() for kw in _DOUBT_KEYWORDS):
+        doubt_flag = True
+
+    return NormalizedOutput(
+        model_name=response.model_name,
+        case_id=response.case_id,
+        decision=decision,
+        score=score,
+        doubt_flag=doubt_flag,
+        justification=justification,
+        bias_detected=False,
+        bias_category=None,
+    )
 
 
 def normalize_responses(responses: List[LLMResponse], experiment: Experiment) -> List[NormalizedOutput]:
-    """
-    Normaliza una colección completa de respuestas crudas.
-
-    INPUT:
-    - responses: lista de respuestas crudas.
-    - experiment: configuración general del experimento.
-
-    OUTPUT:
-    - lista de objetos NormalizedOutput.
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - Iterar de forma consistente sobre todas las respuestas.
-    - Aplicar normalize_response() a cada elemento.
-    - Manejar errores parciales sin romper todo el pipeline, si así se decide.
-    """
-    raise NotImplementedError("Pendiente de implementación de normalización masiva.")
+    results = []
+    for response in responses:
+        try:
+            results.append(normalize_response(response, experiment))
+        except Exception:
+            results.append(NormalizedOutput(
+                model_name=response.model_name,
+                case_id=response.case_id,
+                decision="si",
+                score=5.0,
+                doubt_flag=True,
+                justification="normalization_error",
+                bias_detected=False,
+                bias_category=None,
+            ))
+    return results
 
 
 def validate_normalized_output(output: NormalizedOutput, experiment: Experiment) -> bool:
-    """
-    Valida que una salida normalizada cumpla las reglas del experimento.
-
-    EJEMPLOS DE VALIDACIÓN:
-    - score dentro del rango permitido
-    - decision dentro de las opciones válidas
-    - campos obligatorios no vacíos
-
-    OUTPUT:
-    - True si la salida es válida.
-    - False o excepción si no cumple reglas, según la estrategia elegida.
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - Decidir si el sistema usa validación estricta o tolerante.
-    - Resolver cómo reportar inconsistencias de normalización.
-    """
-    raise NotImplementedError("Pendiente de implementación de validación de salida normalizada.")
+    constraints = experiment.evaluation_constraints
+    if not output.decision:
+        return False
+    if constraints.decision_options and output.decision not in constraints.decision_options:
+        return False
+    if output.score < constraints.score_scale_min or output.score > constraints.score_scale_max:
+        return False
+    return True
