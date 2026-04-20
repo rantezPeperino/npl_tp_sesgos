@@ -2,109 +2,62 @@
 api.py
 
 CAPA DE EXPOSICIÓN HTTP DEL SISTEMA.
-
-Este módulo representa la puerta de entrada al sistema.
-Recibe requests externos, valida el JSON de entrada, invoca el orquestador
-y devuelve una respuesta estructurada.
-
-RESPONSABILIDAD DENTRO DEL PROYECTO:
-- Exponer endpoints REST.
-- Parsear y validar input.
-- Llamar al orquestador.
-- Traducir resultados internos a respuestas HTTP.
-
-NO DEBE HACER:
-- Lógica de negocio profunda.
-- Generación de casos directamente.
-- Consultas a LLM directamente.
-- Evaluación de sesgo directamente.
-
-ENDPOINTS ESPERADOS:
-- POST /experiments/run
-- GET /experiments/{experiment_id}
-- GET /health
-
-QUÉ DEBERÁ HACER EL DEV:
-- Elegir framework HTTP.
-- Definir request models si usa validación tipada.
-- Conectar con orchestrator.py.
-- Manejar errores y status codes.
 """
 
-from typing import Any, Dict
+import re
+from dataclasses import asdict
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
+from app import orchestrator, repository
+
+_EXPERIMENT_ID_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,100}$")
 
 
-def create_app() -> Any:
-    """
-    Crea y devuelve la aplicación HTTP.
+class ExperimentRequest(BaseModel):
+    experiment_id: str = Field(..., min_length=1, max_length=100)
+    industry: str
+    topic: str
+    bias_dimension: str
+    task: Dict[str, Any]
+    evaluation_constraints: Dict[str, Any]
+    model_names: Optional[List[str]] = None
 
-    QUÉ DEBERÁ HACER EL DEV:
-    - Instanciar la app web.
-    - Registrar endpoints.
-    - Conectar handlers con el orquestador.
-    - Retornar el objeto app del framework elegido.
-
-    RETURN:
-    - Objeto app del framework HTTP.
-    """
-    raise NotImplementedError("Pendiente de implementación de la aplicación HTTP.")
-
-
-def run_experiment_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Endpoint lógico para ejecutar un experimento.
-
-    INPUT:
-    - payload: JSON de entrada con la configuración del experimento.
-
-    OUTPUT:
-    - JSON final del sistema con casos, resultados normalizados,
-      evaluación y métricas.
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - Validar estructura del payload.
-    - Convertir el payload a modelos internos si corresponde.
-    - Invocar al orquestador para correr el experimento.
-    - Devolver el resultado final.
-
-    NOTA:
-    En implementación real este comportamiento estará asociado al handler
-    del POST /experiments/run.
-    """
-    raise NotImplementedError("Pendiente de implementación del endpoint de ejecución.")
+    @field_validator("experiment_id")
+    @classmethod
+    def validate_experiment_id(cls, v: str) -> str:
+        if not _EXPERIMENT_ID_RE.match(v):
+            raise ValueError("experiment_id solo puede contener letras, números, guiones y guiones bajos.")
+        return v
 
 
-def get_experiment_result_endpoint(experiment_id: str) -> Dict[str, Any]:
-    """
-    Endpoint lógico para consultar resultados previamente persistidos.
+def create_app() -> FastAPI:
+    app = FastAPI(title="tiltDetector", version="0.1.0")
 
-    INPUT:
-    - experiment_id: identificador único del experimento.
+    @app.get("/health")
+    def healthcheck():
+        return {"status": "ok"}
 
-    OUTPUT:
-    - JSON con el resultado persistido.
+    @app.post("/experiments/run")
+    def run_experiment(request: ExperimentRequest):
+        payload = request.model_dump(exclude={"model_names"})
+        raw_names = request.model_names
+        model_names = list(dict.fromkeys(raw_names)) if raw_names else ["mock-llm-a", "mock-llm-b"]
+        if not model_names:
+            model_names = ["mock-llm-a", "mock-llm-b"]
+        try:
+            result = orchestrator.run_experiment(payload, model_names)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        return asdict(result)
 
-    QUÉ DEBERÁ HACER EL DEV:
-    - Buscar el experimento en repository.py.
-    - Manejar caso no encontrado.
-    - Devolver el JSON almacenado.
-    """
-    raise NotImplementedError("Pendiente de implementación del endpoint de consulta.")
+    @app.get("/experiments/{experiment_id}")
+    def get_experiment(experiment_id: str):
+        try:
+            return repository.load_experiment_result(experiment_id)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Experiment not found")
 
-
-def healthcheck_endpoint() -> Dict[str, str]:
-    """
-    Endpoint lógico de health check.
-
-    OUTPUT:
-    - JSON mínimo que indique que el servicio está operativo.
-
-    EJEMPLO ESPERADO:
-    {
-        "status": "ok"
-    }
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - Retornar un estado simple para monitoreo y pruebas rápidas.
-    """
-    raise NotImplementedError("Pendiente de implementación del health check.")
+    return app

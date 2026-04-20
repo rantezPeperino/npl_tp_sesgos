@@ -2,112 +2,105 @@
 orchestrator.py
 
 COORDINADOR PRINCIPAL DEL PIPELINE END-TO-END.
-
-Este módulo conecta todos los componentes del sistema en el orden correcto.
-Su responsabilidad no es implementar la lógica profunda de cada agente,
-sino invocar cada tramo del flujo y consolidar el resultado final.
-
-RESPONSABILIDAD DENTRO DEL SISTEMA:
-- Construir el experimento a partir del payload de entrada.
-- Generar casos.
-- Ejecutar los casos sobre los LLMs.
-- Persistir respuestas crudas.
-- Normalizar respuestas.
-- Evaluar comparaciones.
-- Calcular métricas.
-- Persistir resultados finales.
-- Devolver el resultado completo a la API.
-
-QUÉ NO DEBE HACER:
-- No debe reimplementar la lógica de generación.
-- No debe interpretar directamente texto crudo.
-- No debe contener fórmulas de métricas.
-- No debe exponer endpoints HTTP.
-
-QUÉ DEBERÁ HACER EL DEV:
-- Definir claramente el orden de ejecución.
-- Decidir qué hacer ante errores parciales.
-- Consolidar la estructura final de salida.
+Dev 1: build_experiment → generate_cases → execute_on_models → save_raw → result parcial.
 """
 
 from typing import Any, Dict, List
 
+from app import case_generator, llm_clients, repository
 from app.models import (
     EvaluationComparison,
     Experiment,
+    EvaluationConstraints,
     ExperimentResult,
     LLMResponse,
     MetricsResult,
+    ModelExecutionResult,
     NormalizedOutput,
+    TaskDefinition,
 )
 
 
 def build_experiment_from_payload(payload: Dict[str, Any]) -> Experiment:
-    """
-    Convierte el JSON de entrada de la API a un objeto Experiment.
-
-    INPUT:
-    - payload: diccionario recibido por API.
-
-    OUTPUT:
-    - objeto Experiment.
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - mapear estructuras anidadas como task y evaluation_constraints.
-    - validar campos mínimos antes de construir el modelo.
-    """
-    raise NotImplementedError("Pendiente de implementación de mapeo payload -> Experiment.")
+    task_data = payload["task"]
+    constraints_data = payload["evaluation_constraints"]
+    return Experiment(
+        experiment_id=payload["experiment_id"],
+        industry=payload["industry"],
+        topic=payload["topic"],
+        bias_dimension=payload["bias_dimension"],
+        task=TaskDefinition(
+            role_to_evaluate=task_data["role_to_evaluate"],
+            question=task_data["question"],
+            required_output_type=task_data["required_output_type"],
+        ),
+        evaluation_constraints=EvaluationConstraints(
+            score_scale_min=constraints_data["score_scale_min"],
+            score_scale_max=constraints_data["score_scale_max"],
+            decision_options=constraints_data.get("decision_options", []),
+        ),
+    )
 
 
 def run_experiment(payload: Dict[str, Any], model_names: List[str]) -> ExperimentResult:
-    """
-    Ejecuta el pipeline completo del sistema.
+    experiment = build_experiment_from_payload(payload)
 
-    FLUJO ESPERADO:
-    1. Construir Experiment.
-    2. Generar casos.
-    3. Ejecutar casos sobre modelos.
-    4. Persistir raw responses.
-    5. Normalizar respuestas.
-    6. Evaluar comparaciones.
-    7. Calcular métricas.
-    8. Construir resultado final.
-    9. Persistir resultado final.
-    10. Retornar ExperimentResult.
+    repository.save_input_payload(experiment.experiment_id, payload)
 
-    INPUT:
-    - payload: JSON de entrada.
-    - model_names: lista de nombres lógicos de modelos a evaluar.
+    cases = case_generator.generate_cases(experiment)
 
-    OUTPUT:
-    - objeto ExperimentResult.
+    raw_responses = llm_clients.execute_cases_on_models(cases, experiment, model_names)
 
-    QUÉ DEBERÁ HACER EL DEV:
-    - integrar correctamente los módulos del proyecto.
-    - decidir estrategia de logging y manejo de excepciones.
-    - garantizar que el resultado sea serializable por la API.
-    """
-    raise NotImplementedError("Pendiente de implementación del pipeline completo.")
+    repository.save_raw_responses(experiment.experiment_id, raw_responses)
+
+    result = assemble_experiment_result(
+        experiment=experiment,
+        cases=cases,
+        raw_responses=raw_responses,
+        normalized_outputs=[],
+        comparisons_by_model={},
+        metrics_by_model={},
+        global_summary={"status": "dev1_complete", "pending": "normalization, evaluation, metrics (Dev 2)"},
+    )
+
+    repository.save_final_result(result)
+    return result
 
 
 def assemble_experiment_result(
     experiment: Experiment,
-    cases: List[Dict[str, Any]],
+    cases: List[Any],
     raw_responses: List[LLMResponse],
     normalized_outputs: List[NormalizedOutput],
     comparisons_by_model: Dict[str, List[EvaluationComparison]],
     metrics_by_model: Dict[str, MetricsResult],
     global_summary: Dict[str, Any],
 ) -> ExperimentResult:
-    """
-    Arma el objeto final de salida del sistema.
+    seen: Dict[str, None] = {}
+    for r in raw_responses:
+        seen[r.model_name] = None
+    unique_model_names = list(seen)
 
-    OBJETIVO:
-    - consolidar todos los artefactos intermedios en una única estructura
-      coherente con el contrato final de la API.
+    model_results = [
+        ModelExecutionResult(
+            model_name=model_name,
+            raw_responses=[r for r in raw_responses if r.model_name == model_name],
+            normalized_outputs=[o for o in normalized_outputs if o.model_name == model_name],
+            comparisons=comparisons_by_model.get(model_name, []),
+            metrics=metrics_by_model.get(model_name),
+        )
+        for model_name in unique_model_names
+    ]
 
-    QUÉ DEBERÁ HACER EL DEV:
-    - decidir si guarda payload final ya serializado o estructuras tipadas.
-    - mantener compatibilidad con README y con el contrato JSON acordado.
-    """
-    raise NotImplementedError("Pendiente de implementación del ensamblado del resultado final.")
+    return ExperimentResult(
+        experiment_id=experiment.experiment_id,
+        metadata={
+            "industry": experiment.industry,
+            "topic": experiment.topic,
+            "bias_dimension": experiment.bias_dimension,
+        },
+        cases=cases,
+        model_results=model_results,
+        global_summary=global_summary,
+        payload={},
+    )
