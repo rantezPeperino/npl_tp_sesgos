@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+data/
+
+# BMad Method
+.claude/
+_bmad/
+_bmad-output/
+bmad-method/
+.bmad/

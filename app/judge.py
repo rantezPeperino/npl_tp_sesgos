@@ -23,7 +23,7 @@ def find_comparable_case_pairs(
     experiment: Experiment,
 ) -> List[Tuple[NormalizedOutput, NormalizedOutput]]:
     bases = [o for o in outputs if "_base_" in o.case_id]
-    counterfactuals = [o for o in outputs if "_cf_" in o.case_id]
+    counterfactuals = [o for o in outputs if "_counterfactual_" in o.case_id or "_cf_" in o.case_id]
     pairs = []
     for base in bases:
         for cf in counterfactuals:

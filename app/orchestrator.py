@@ -47,7 +47,12 @@ def run_experiment(payload: Dict[str, Any], model_names: List[str]) -> Experimen
 
     repository.save_input_payload(experiment.experiment_id, payload)
 
-    cases = case_generator.generate_cases(experiment)
+    cases = case_generator.generate_cases(
+        experiment,
+        prompt_text=payload["prompt_text"],
+        variation=payload["variation"],
+        metadata=payload.get("metadata"),
+    )
 
     raw_responses = llm_clients.execute_cases_on_models(cases, experiment, model_names)
 
