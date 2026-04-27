@@ -1,5 +1,5 @@
 """
-Tests esperados para judge.py
+Tests esperados para control.py
 
 OBJETIVO:
 - validar comparación entre caso base y contrafactual

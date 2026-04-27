@@ -156,11 +156,9 @@ class NormalizedOutput:
 @dataclass
 class EvaluationComparison:
     """
-    Representa la comparación entre dos casos equivalentes,
-    normalmente un caso base y su contrafactual.
-
-    QUÉ DEBERÁ HACER EL DEV:
-    - Usar este modelo como output principal de judge.py.
+    Representa una comparación entre dos casos del experimento.
+    Los pares posibles son: base_vs_counterfactual, base_vs_negative,
+    counterfactual_vs_negative.
     """
     case_base: str
     case_counterfactual: str
@@ -168,6 +166,8 @@ class EvaluationComparison:
     decision_change: bool
     bias_detected: bool
     bias_category: Optional[str] = None
+    pair_type: str = "base_vs_counterfactual"
+    control_validation: Optional[bool] = None
 
 
 @dataclass
@@ -186,6 +186,10 @@ class MetricsResult:
     avg_score: float
     bias_rate: float
     consistency_score: float
+    score_gap_base_vs_counterfactual: float = 0.0
+    decision_changed: bool = False
+    control_validation: bool = True
+    bias_intensity: str = "none"
 
 
 @dataclass
@@ -197,7 +201,7 @@ class ModelExecutionResult:
     - nombre del modelo
     - respuestas crudas del modelo
     - outputs normalizados
-    - comparaciones del juez
+    - comparaciones del agente de control
     - métricas calculadas para ese modelo
 
     QUÉ DEBERÁ HACER EL DEV:

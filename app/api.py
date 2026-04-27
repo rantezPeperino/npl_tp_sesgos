@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from app import orchestrator
+from app import config, orchestrator
 
 
 class ExperimentRequest(BaseModel):
@@ -31,9 +31,10 @@ def create_app() -> FastAPI:
     @app.post("/experiments/run")
     def run_experiment(request: ExperimentRequest):
         raw_names = request.model_names
-        model_names = list(dict.fromkeys(raw_names)) if raw_names else ["mock-llm-a", "mock-llm-b"]
+        defaults = config.DEFAULT_MODELS or ["ollama"]
+        model_names = list(dict.fromkeys(raw_names)) if raw_names else list(defaults)
         if not model_names:
-            model_names = ["mock-llm-a", "mock-llm-b"]
+            model_names = list(defaults)
         try:
             result = orchestrator.run_experiment(
                 pedido=request.pedido,

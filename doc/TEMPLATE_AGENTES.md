@@ -1,379 +1,246 @@
+# Template de Agentes – Implementación Actual
 
-```text
-class NombreAgente:
-    def run(self, input_1, input_2=None):
-        # coordina flujo interno del agente
-        ...
-    
-    def _paso_1(self, ...):
-        ...
-    
-    def _paso_2(self, ...):
-        ...
+El proyecto evolucionó de la propuesta inicial (clases con `class XxxAgent`)
+a un enfoque de **módulos funcionales**: cada agente es un módulo Python con
+funciones puras que reciben/retornan estructuras del modelo de dominio
+(`app/models.py`).
 
+Esto es lo que hay implementado hoy.
+
+---
+
+## Convención general
+
+```python
+# app/<agente>.py
+
+"""
+<agente>.py
+
+DESCRIPCIÓN BREVE Y RESPONSABILIDAD DEL AGENTE.
+"""
+
+from typing import ...
+
+from app.models import ...
+
+
+def funcion_publica(args) -> Tipo:
+    """Punto de entrada del agente (lo que llama el orquestador)."""
+    ...
+
+
+def _helper_privado(args) -> Tipo:
+    """Funciones auxiliares con guion bajo."""
+    ...
 ```
 
-```text
-class Orchestrator:
-    def __init__(self):
-        self.agent_1 = Agent1()
-        self.agent_2 = Agent2()
-        self.agent_3 = Agent3()
+Reglas:
+- Sin clases salvo necesidad real (solo `dataclasses` en `models.py`).
+- Las funciones públicas son las que invoca `orchestrator.py`.
+- Cada agente trabaja sobre los contratos de `app/models.py`.
+- Dependencias entre agentes solo a través del orquestador.
 
-    def run(self, ...):
-        out_1 = self.agent_1.run(...)
-        out_2 = self.agent_2.run(out_1)
-        out_3 = self.agent_3.run(out_2)
-        return out_3
+---
 
+## 1. Prompt Normalizer  ([app/prompt_normalizer.py](../app/prompt_normalizer.py))
+
+```python
+def normalize_prompt(pedido: str, sesgo_medir: str) -> Dict[str, Any]:
+    """
+    Texto plano + dimensión → JSON universal con experiment_id,
+    variation, task, evaluation_constraints, metadata.
+    """
 ```
 
+---
 
-```text
-from typing import List
+## 2. Case Generator  ([app/case_generator.py](../app/case_generator.py))
 
-from app.models import Case, Experiment
-
-
-class CaseGeneratorAgent:
+```python
+def generate_cases(
+    experiment: Experiment,
+    prompt_text: str,
+    variation: Dict[str, Any],
+    metadata: Optional[Dict[str, Any]] = None,
+) -> List[Case]:
     """
-    Agente encargado de construir los casos del experimento.
-
-    RESPONSABILIDAD:
-    - Generar un caso base
-    - Generar uno o más contrafactuales
-    - Retornar una lista homogénea de Case
-
-    REGLA DE DISEÑO:
-    - No consulta LLMs
-    - No normaliza
-    - No evalúa sesgo
+    Genera los 3 casos: base, counterfactual, negative.
+    Cada Case incluye input_case estructurado y rendered_prompt.
     """
-
-    def run(self, experiment: Experiment) -> List[Case]:
-        """
-        Punto de entrada principal del agente.
-
-        Flujo esperado:
-        1. Validar experimento
-        2. Generar caso base
-        3. Generar contrafactuales
-        4. Unificar resultado
-        """
-        self._validate_experiment(experiment)
-        base_case = self._generate_base_case(experiment)
-        counterfactual_cases = self._generate_counterfactual_cases(base_case, experiment)
-        return [base_case] + counterfactual_cases
-
-    def _validate_experiment(self, experiment: Experiment) -> None:
-        """
-        Valida que el experimento tenga lo necesario para generar casos.
-
-        Ejemplos:
-        - experiment_id presente
-        - bias_dimension presente
-        - task bien definida
-        """
-        raise NotImplementedError("Pendiente validación del experimento.")
-
-    def _generate_base_case(self, experiment: Experiment) -> Case:
-        """
-        Genera el caso base del experimento.
-        """
-        raise NotImplementedError("Pendiente generación del caso base.")
-
-    def _generate_counterfactual_cases(self, base_case: Case, experiment: Experiment) -> List[Case]:
-        """
-        Genera casos contrafactuales a partir del caso base.
-        """
-        raise NotImplementedError("Pendiente generación de contrafactuales.")
-
 ```
 
+---
 
-```text
+## 3. LLM Health  ([app/llm_health.py](../app/llm_health.py))
 
-
-```
-```text
-from typing import List
-
-from app.models import Experiment, LLMResponse, NormalizedOutput
-
-
-class NormalizerAgent:
+```python
+def filter_healthy_models(model_names: List[str]) -> List[str]:
     """
-    Agente encargado de transformar respuestas crudas en salidas estructuradas.
-
-    RESPONSABILIDAD:
-    - Recibir LLMResponse
-    - Extraer campos comparables
-    - Retornar NormalizedOutput
-
-    REGLA DE DISEÑO:
-    - No evalúa sesgo entre casos
-    - No calcula métricas
+    Hace ping a cada proveedor solicitado.
+    Devuelve solo los modelos sanos. Imprime [WARN] por los descartados.
     """
-
-    def run(self, responses: List[LLMResponse], experiment: Experiment) -> List[NormalizedOutput]:
-        """
-        Punto de entrada principal del agente.
-
-        Flujo esperado:
-        1. Iterar respuestas
-        2. Normalizar cada una
-        3. Validar la salida
-        4. Retornar lista homogénea
-        """
-        normalized_outputs: List[NormalizedOutput] = []
-
-        for response in responses:
-            normalized = self._normalize_single_response(response, experiment)
-            self._validate_output(normalized, experiment)
-            normalized_outputs.append(normalized)
-
-        return normalized_outputs
-
-    def _normalize_single_response(
-        self,
-        response: LLMResponse,
-        experiment: Experiment,
-    ) -> NormalizedOutput:
-        """
-        Convierte una respuesta cruda en una estructura normalizada.
-        """
-        raise NotImplementedError("Pendiente normalización individual.")
-
-    def _validate_output(self, output: NormalizedOutput, experiment: Experiment) -> None:
-        """
-        Valida que la salida normalizada cumpla el contrato del sistema.
-        """
-        raise NotImplementedError("Pendiente validación del output normalizado.")
-
-```
-```text
-
-from typing import Dict, List
-
-from app.models import EvaluationComparison, Experiment, NormalizedOutput
-
-
-class JudgeAgent:
-    """
-    Agente encargado de comparar casos equivalentes y detectar sesgo.
-
-    RESPONSABILIDAD:
-    - Agrupar outputs por modelo
-    - Encontrar pares base vs contrafactual
-    - Compararlos
-    - Devolver comparaciones por modelo
-    """
-
-    def run(
-        self,
-        normalized_outputs: List[NormalizedOutput],
-        experiment: Experiment,
-    ) -> Dict[str, List[EvaluationComparison]]:
-        """
-        Punto de entrada principal del agente.
-
-        Flujo esperado:
-        1. Agrupar por modelo
-        2. Encontrar pares comparables
-        3. Comparar cada par
-        4. Retornar comparaciones por modelo
-        """
-        outputs_by_model = self._group_by_model(normalized_outputs)
-        result: Dict[str, List[EvaluationComparison]] = {}
-
-        for model_name, outputs in outputs_by_model.items():
-            pairs = self._find_comparable_pairs(outputs, experiment)
-            comparisons = [self._compare_pair(base, cf, experiment) for base, cf in pairs]
-            result[model_name] = comparisons
-
-        return result
-
-    def _group_by_model(self, outputs: List[NormalizedOutput]) -> Dict[str, List[NormalizedOutput]]:
-        """
-        Agrupa outputs por model_name.
-        """
-        raise NotImplementedError("Pendiente agrupamiento por modelo.")
-
-    def _find_comparable_pairs(
-        self,
-        outputs: List[NormalizedOutput],
-        experiment: Experiment,
-    ):
-        """
-        Encuentra pares comparables base vs contrafactual.
-        """
-        raise NotImplementedError("Pendiente búsqueda de pares comparables.")
-
-    def _compare_pair(
-        self,
-        base_output: NormalizedOutput,
-        counterfactual_output: NormalizedOutput,
-        experiment: Experiment,
-    ) -> EvaluationComparison:
-        """
-        Compara un par base vs contrafactual.
-        """
-        raise NotImplementedError("Pendiente comparación de pares.")
-```
-```text
-from typing import Dict, List
-
-from app.models import EvaluationComparison, MetricsResult, NormalizedOutput
-
-
-class MetricsAgent:
-    """
-    Agente encargado de calcular métricas agregadas.
-
-    RESPONSABILIDAD:
-    - Calcular métricas por modelo
-    - Calcular un resumen global
-    """
-
-    def run(
-        self,
-        comparisons_by_model: Dict[str, List[EvaluationComparison]],
-        outputs_by_model: Dict[str, List[NormalizedOutput]],
-    ) -> Dict[str, MetricsResult]:
-        """
-        Punto de entrada principal del agente.
-
-        Retorna métricas por modelo.
-        """
-        metrics_by_model: Dict[str, MetricsResult] = {}
-
-        for model_name, comparisons in comparisons_by_model.items():
-            outputs = outputs_by_model.get(model_name, [])
-            metrics_by_model[model_name] = self._calculate_model_metrics(comparisons, outputs)
-
-        return metrics_by_model
-
-    def _calculate_model_metrics(
-        self,
-        comparisons: List[EvaluationComparison],
-        outputs: List[NormalizedOutput],
-    ) -> MetricsResult:
-        """
-        Calcula métricas para un modelo específico.
-        """
-        raise NotImplementedError("Pendiente cálculo de métricas por modelo.")
-
-```
-```text
-from typing import Any, Dict, List
-
-from app.case_generator import CaseGeneratorAgent
-from app.judge import JudgeAgent
-from app.llm_clients import execute_cases_on_models
-from app.metrics import MetricsAgent
-from app.models import Experiment, ExperimentResult, NormalizedOutput
-from app.normalizer import NormalizerAgent
-
-
-class ExperimentOrchestrator:
-    """
-    Orquestador principal del sistema.
-
-    RESPONSABILIDAD:
-    - Coordinar el flujo completo
-    - Invocar agentes en el orden correcto
-    - Ensamblar resultado final
-
-    REGLA DE DISEÑO:
-    - No reimplementar la lógica interna de los agentes
-    - Solo coordinar
-    """
-
-    def __init__(self) -> None:
-        self.case_generator = CaseGeneratorAgent()
-        self.normalizer = NormalizerAgent()
-        self.judge = JudgeAgent()
-        self.metrics = MetricsAgent()
-
-    def run(
-        self,
-        experiment: Experiment,
-        model_names: List[str],
-    ) -> ExperimentResult:
-        """
-        Ejecuta el pipeline completo.
-
-        Flujo:
-        1. Generar casos
-        2. Ejecutar casos sobre LLMs
-        3. Normalizar respuestas
-        4. Evaluar comparaciones
-        5. Calcular métricas
-        6. Armar resultado final
-        """
-        cases = self.case_generator.run(experiment)
-
-        raw_responses = execute_cases_on_models(
-            cases=cases,
-            experiment=experiment,
-            model_names=model_names,
-        )
-
-        normalized_outputs = self.normalizer.run(
-            responses=raw_responses,
-            experiment=experiment,
-        )
-
-        comparisons_by_model = self.judge.run(
-            normalized_outputs=normalized_outputs,
-            experiment=experiment,
-        )
-
-        outputs_by_model = self._group_outputs_by_model(normalized_outputs)
-
-        metrics_by_model = self.metrics.run(
-            comparisons_by_model=comparisons_by_model,
-            outputs_by_model=outputs_by_model,
-        )
-
-        return self._build_result(
-            experiment=experiment,
-            cases=cases,
-            raw_responses=raw_responses,
-            normalized_outputs=normalized_outputs,
-            comparisons_by_model=comparisons_by_model,
-            metrics_by_model=metrics_by_model,
-        )
-
-    def _group_outputs_by_model(
-        self,
-        outputs: List[NormalizedOutput],
-    ) -> Dict[str, List[NormalizedOutput]]:
-        """
-        Agrupa outputs normalizados por modelo.
-
-        Este método puede quedarse acá o moverse a un helper común,
-        según la decisión del equipo.
-        """
-        raise NotImplementedError("Pendiente agrupamiento de outputs por modelo.")
-
-    def _build_result(
-        self,
-        experiment: Experiment,
-        cases: List[Any],
-        raw_responses: List[Any],
-        normalized_outputs: List[NormalizedOutput],
-        comparisons_by_model: Dict[str, Any],
-        metrics_by_model: Dict[str, Any],
-    ) -> ExperimentResult:
-        """
-        Ensambla el resultado final del experimento.
-        """
-        raise NotImplementedError("Pendiente ensamblado del resultado final.")
-
 ```
 
+---
 
-```text
+## 4. LLM Clients  ([app/llm_clients.py](../app/llm_clients.py))
 
+```python
+def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -> LLMResponse:
+    """Una llamada nueva al LLM, sin contexto compartido."""
+
+def execute_cases_on_models(
+    cases: List[Case], experiment: Experiment, model_names: List[str]
+) -> List[LLMResponse]:
+    """Itera (modelo × caso). Captura errores por caso sin abortar."""
 ```
+
+Cada provider tiene su `_call_<provider>` registrado en `_PROVIDERS_CALL`.
+
+---
+
+## 5. Normalizer  ([app/normalizer.py](../app/normalizer.py))
+
+```python
+def normalize_responses(
+    responses: List[LLMResponse], experiment: Experiment
+) -> List[NormalizedOutput]:
+    """Parsea cada respuesta cruda y produce NormalizedOutput."""
+
+def normalize_response(response: LLMResponse, experiment: Experiment) -> NormalizedOutput:
+    """Convierte una respuesta individual."""
+
+def validate_normalized_output(output: NormalizedOutput, experiment: Experiment) -> bool:
+    """Valida que el output respete las restricciones del experimento."""
+```
+
+---
+
+## 6. Control  ([app/control.py](../app/control.py))
+
+```python
+def evaluate_outputs(
+    outputs: List[NormalizedOutput], experiment: Experiment
+) -> Dict[str, List[EvaluationComparison]]:
+    """
+    Por modelo, genera 3 EvaluationComparison:
+    base_vs_counterfactual, base_vs_negative, counterfactual_vs_negative.
+    Setea control_validation = (negative.decision == "no").
+    """
+```
+
+---
+
+## 7. Metrics  ([app/metrics.py](../app/metrics.py))
+
+```python
+def calculate_metrics_per_model(
+    comparisons_by_model: Dict[str, List[EvaluationComparison]],
+    outputs_by_model: Dict[str, List[NormalizedOutput]],
+) -> Dict[str, MetricsResult]:
+    """
+    Para cada modelo: avg_score, bias_rate, consistency_score,
+    score_gap_base_vs_counterfactual, decision_changed,
+    control_validation, bias_intensity.
+    """
+
+def calculate_global_summary(...) -> Dict[str, Any]:
+    """Resumen global cross-modelo."""
+```
+
+---
+
+## 8. Report Renderer  ([app/report_renderer.py](../app/report_renderer.py))
+
+```python
+def render_terminal_report(result: ExperimentResult) -> str:
+    """
+    Reporte por LLM con: prompt inicial, casos generados,
+    prompt enviado, respuesta cruda, normalización, comparación,
+    conclusión condicional según bias_intensity y control_validation.
+    """
+```
+
+---
+
+## 9. Orquestador  ([app/orchestrator.py](../app/orchestrator.py))
+
+```python
+_EXPERIMENTS: Dict[str, ExperimentResult] = {}
+
+
+def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str]) -> ExperimentResult:
+    """
+    Coordina todo el pipeline:
+    1. llm_health.filter_healthy_models
+    2. prompt_normalizer.normalize_prompt
+    3. build_experiment_from_payload
+    4. case_generator.generate_cases
+    5. llm_clients.execute_cases_on_models
+    6. normalizer.normalize_responses
+    7. control.evaluate_outputs
+    8. _propagate_bias_to_outputs
+    9. metrics.calculate_metrics_per_model + calculate_global_summary
+    10. assemble_experiment_result
+    11. report_renderer.render_terminal_report (print)
+    12. _EXPERIMENTS[experiment_id] = result
+    """
+
+
+def get_experiment_result(experiment_id: str) -> Dict[str, Any]:
+    """Recupera resultado guardado en memoria. KeyError si no existe."""
+```
+
+---
+
+## Modelo de dominio  ([app/models.py](../app/models.py))
+
+Todos los agentes operan sobre estos `@dataclass`:
+
+```python
+@dataclass class TaskDefinition: role_to_evaluate, question, required_output_type
+@dataclass class EvaluationConstraints: score_scale_min, score_scale_max, decision_options
+@dataclass class Experiment: experiment_id, industry, topic, bias_dimension, task, evaluation_constraints
+@dataclass class Case: case_id, case_type, input_payload, based_on
+@dataclass class LLMResponse: model_name, case_id, raw_response
+@dataclass class NormalizedOutput: model_name, case_id, decision, score, doubt_flag,
+                                   justification, bias_detected, bias_category
+@dataclass class EvaluationComparison: case_base, case_counterfactual, score_gap,
+                                       decision_change, bias_detected, bias_category,
+                                       pair_type, control_validation
+@dataclass class MetricsResult: avg_score, bias_rate, consistency_score,
+                                score_gap_base_vs_counterfactual, decision_changed,
+                                control_validation, bias_intensity
+@dataclass class ModelExecutionResult: model_name, raw_responses, normalized_outputs,
+                                       comparisons, metrics
+@dataclass class ExperimentResult: experiment_id, metadata, cases, model_results,
+                                   global_summary, payload
+```
+
+---
+
+## Configuración / Registro de proveedores
+
+[app/providers.py](../app/providers.py) — punto único para mapear `model_name → provider`.
+
+```python
+PROVIDER_ALIASES: Dict[str, str] = {
+    "ollama": "ollama", "llama": "ollama", "llama3": "ollama", "local": "ollama",
+    "openai": "openai", "chatgpt": "openai", "gpt": "openai",
+    "gemini": "gemini", "google": "gemini",
+}
+
+def resolve_provider(model_name: str) -> str: ...
+```
+
+Pasos para agregar un nuevo proveedor (ej. Mistral):
+
+1. **Aliases**: sumar entries a `PROVIDER_ALIASES` en `app/providers.py`.
+2. **Call**: implementar `_call_mistral(prompt, temperature)` en
+   [app/llm_clients.py](../app/llm_clients.py) y registrarlo en `_PROVIDERS_CALL`.
+3. **Health**: implementar `_check_mistral()` en [app/llm_health.py](../app/llm_health.py)
+   y registrarlo en `_PROVIDER_CHECKS`.
+4. **Config**: sumar `MISTRAL_API_KEY` y `MISTRAL_MODEL` a [app/config.py](../app/config.py)
+   y a `.env.example`.
+5. **Habilitarlo**: agregar `mistral` a `ENABLED_PROVIDERS` del `.env`.

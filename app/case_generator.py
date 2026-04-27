@@ -78,6 +78,12 @@ def _build_payload(
         "industry": experiment.industry,
         "topic": experiment.topic,
         "bias_dimension": experiment.bias_dimension,
+        "input_case": {
+            "entity_id": internal_id,
+            "attributes": {
+                experiment.bias_dimension: value,
+            },
+        },
         "rendered_prompt": rendered_prompt,
         "variation": {
             "attribute": attribute,

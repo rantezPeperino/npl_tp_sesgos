@@ -1,30 +1,22 @@
 """
 llm_clients.py
 
-CAPA DE INTEGRACIÓN CON LOS MODELOS DE LENGUAJE EVALUADOS.
-Soporta: openai (habilitado), anthropic y gemini (deshabilitados por ahora).
-Fallback a mock determinista si el proveedor no está habilitado.
+CAPA DE INTEGRACIÓN CON LOS LLMS EVALUADOS.
+Soporta: ollama (local), openai, gemini.
+
+REGLA CRÍTICA DE INDEPENDENCIA:
+Cada caso (base, counterfactual, negative) se envía al LLM en una conexión
+NUEVA, sin historial ni contexto previo. El cliente del SDK se instancia
+adentro de cada llamada para garantizar independencia entre evaluaciones.
+
+Para agregar un proveedor: ver app/providers.py.
 """
 
 import json
 from typing import List
 
+from app import providers
 from app.models import Case, Experiment, LLMResponse
-
-
-_OPENAI_PROVIDER = "openai"
-_ANTHROPIC_PROVIDER = "anthropic"
-_GEMINI_PROVIDER = "gemini"
-
-_MODEL_PROVIDER_MAP = {
-    "chatgpt": _OPENAI_PROVIDER,
-    "openai": _OPENAI_PROVIDER,
-    "gpt": _OPENAI_PROVIDER,
-    "claude": _ANTHROPIC_PROVIDER,
-    "anthropic": _ANTHROPIC_PROVIDER,
-    "gemini": _GEMINI_PROVIDER,
-    "google": _GEMINI_PROVIDER,
-}
 
 
 def build_prompt_for_case(case: Case, experiment: Experiment) -> str:
@@ -50,79 +42,87 @@ def build_prompt_for_case(case: Case, experiment: Experiment) -> str:
     )
 
 
-def _resolve_provider(model_name: str) -> str:
-    key = model_name.lower().split("-")[0]
-    return _MODEL_PROVIDER_MAP.get(key, "mock")
-
-
-def _call_openai(prompt: str, model: str, api_key: str, temperature: float = 0.0) -> str:
+def _call_openai(prompt: str, temperature: float) -> str:
+    from app import config
+    if not config.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY no configurada")
     from openai import OpenAI  # type: ignore
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=config.OPENAI_API_KEY)
     response = client.chat.completions.create(
-        model=model,
+        model=config.OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=temperature,
     )
     return response.choices[0].message.content or ""
 
 
-def _call_anthropic(prompt: str, api_key: str) -> str:
-    import anthropic  # type: ignore
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
-
-
-def _call_gemini(prompt: str, api_key: str) -> str:
+def _call_gemini(prompt: str, temperature: float) -> str:
+    from app import config
+    if not config.GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY no configurada")
     import google.generativeai as genai  # type: ignore
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
+    genai.configure(api_key=config.GEMINI_API_KEY)
+    model = genai.GenerativeModel(config.GEMINI_MODEL)
+    response = model.generate_content(
+        prompt,
+        generation_config={"temperature": temperature},
+    )
     return response.text
 
 
-def _mock_response(case: Case, experiment: Experiment) -> str:
-    options = experiment.evaluation_constraints.decision_options
-    default_yes = options[0] if options else "si"
-    default_no = options[1] if len(options) > 1 else default_yes
+def _call_ollama(prompt: str, temperature: float) -> str:
+    from app import config
+    import urllib.request
 
-    if case.case_type == "base":
-        score, decision = 9.0, default_yes
-        justification = "Perfil sólido y consistente con el criterio evaluado."
-    elif case.case_type == "counterfactual":
-        score, decision = 7.0, default_yes
-        justification = "Perfil con condiciones similares, aunque habría que validar con más detalle."
-    else:
-        score, decision = 5.0, default_no
-        justification = "Información insuficiente o no aplica al criterio evaluado."
-    return json.dumps({"decision": decision, "score": score, "justification": justification}, ensure_ascii=False)
+    body = json.dumps({
+        "model": config.OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": temperature},
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{config.OLLAMA_BASE_URL.rstrip('/')}/api/generate",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    return data.get("response", "")
+
+
+_PROVIDERS_CALL = {
+    "ollama": _call_ollama,
+    "openai": _call_openai,
+    "gemini": _call_gemini,
+}
 
 
 def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -> LLMResponse:
     from app import config
 
-    provider = _resolve_provider(model_name)
+    provider = providers.resolve_provider(model_name)
+    if provider not in config.ENABLED_PROVIDERS:
+        raise ValueError(
+            f"Proveedor '{provider}' no está habilitado. "
+            f"Habilitalo en ENABLED_PROVIDERS del .env."
+        )
+
+    call_fn = _PROVIDERS_CALL.get(provider)
+    if call_fn is None:
+        raise ValueError(f"Proveedor sin implementación: {provider}")
+
     prompt = build_prompt_for_case(case, experiment)
     temperature = float(case.input_payload.get("metadata", {}).get("temperature", 0.0))
-    raw: str
-
-    if provider == _OPENAI_PROVIDER and _OPENAI_PROVIDER in config.ENABLED_PROVIDERS:
-        raw = _call_openai(prompt, config.OPENAI_MODEL, config.OPENAI_API_KEY, temperature=temperature)
-    elif provider == _ANTHROPIC_PROVIDER and _ANTHROPIC_PROVIDER in config.ENABLED_PROVIDERS:
-        raw = _call_anthropic(prompt, config.ANTHROPIC_API_KEY)
-    elif provider == _GEMINI_PROVIDER and _GEMINI_PROVIDER in config.ENABLED_PROVIDERS:
-        raw = _call_gemini(prompt, config.GEMINI_API_KEY)
-    else:
-        raw = _mock_response(case, experiment)
-
+    raw = call_fn(prompt, temperature)
     return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw)
 
 
 def execute_cases_on_models(cases: List[Case], experiment: Experiment, model_names: List[str]) -> List[LLMResponse]:
+    """
+    Recorre cada (modelo, caso) y emite UNA llamada independiente por par.
+    """
     responses = []
     for model_name in model_names:
         for case in cases:
@@ -133,7 +133,7 @@ def execute_cases_on_models(cases: List[Case], experiment: Experiment, model_nam
                     LLMResponse(
                         model_name=model_name,
                         case_id=case.case_id,
-                        raw_response=json.dumps({"error": str(exc)}),
+                        raw_response=json.dumps({"error": str(exc)}, ensure_ascii=False),
                     )
                 )
     return responses
