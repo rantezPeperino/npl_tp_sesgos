@@ -13,10 +13,16 @@ Para agregar un proveedor: ver app/providers.py.
 """
 
 import json
+import sys
+import time
 from typing import List
 
 from app import providers
 from app.models import Case, Experiment, LLMResponse
+
+
+def _log(msg: str) -> None:
+    print(msg, file=sys.stderr, flush=True)
 
 
 def build_prompt_for_case(case: Case, experiment: Experiment) -> str:
@@ -70,6 +76,21 @@ def _call_gemini(prompt: str, temperature: float) -> str:
     return response.text
 
 
+def _call_anthropic(prompt: str, temperature: float) -> str:
+    from app import config
+    if not config.ANTHROPIC_API_KEY:
+        raise ValueError("ANTHROPIC_API_KEY no configurada")
+    import anthropic  # type: ignore
+    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=512,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
+
+
 def _call_ollama(prompt: str, temperature: float) -> str:
     from app import config
     import urllib.request
@@ -96,6 +117,7 @@ _PROVIDERS_CALL = {
     "ollama": _call_ollama,
     "openai": _call_openai,
     "gemini": _call_gemini,
+    "anthropic": _call_anthropic,
 }
 
 
@@ -115,8 +137,41 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -
 
     prompt = build_prompt_for_case(case, experiment)
     temperature = float(case.input_payload.get("metadata", {}).get("temperature", 0.0))
+
+    model_id = _resolve_model_id(provider)
+    target = _resolve_target(provider)
+    _log(f"[LLM CALL] provider={provider} model={model_id} target={target} case={case.case_id}")
+    t0 = time.monotonic()
     raw = call_fn(prompt, temperature)
+    elapsed = time.monotonic() - t0
+    _log(f"[LLM RESP] provider={provider} model={model_id} elapsed={elapsed:.2f}s chars={len(raw)} case={case.case_id}")
     return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw)
+
+
+def _resolve_model_id(provider: str) -> str:
+    from app import config
+    if provider == "ollama":
+        return config.OLLAMA_MODEL
+    if provider == "openai":
+        return config.OPENAI_MODEL
+    if provider == "gemini":
+        return config.GEMINI_MODEL
+    if provider == "anthropic":
+        return config.ANTHROPIC_MODEL
+    return "?"
+
+
+def _resolve_target(provider: str) -> str:
+    from app import config
+    if provider == "ollama":
+        return config.OLLAMA_BASE_URL
+    if provider == "openai":
+        return "api.openai.com"
+    if provider == "gemini":
+        return "generativelanguage.googleapis.com"
+    if provider == "anthropic":
+        return "api.anthropic.com"
+    return "?"
 
 
 def execute_cases_on_models(cases: List[Case], experiment: Experiment, model_names: List[str]) -> List[LLMResponse]:

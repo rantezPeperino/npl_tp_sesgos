@@ -137,9 +137,10 @@ Cliente externo (Postman / curl / Frontend)
 | Ollama    | habilitado | nativo HTTP (sin SDK)     | `llama3.2:latest`    |
 | OpenAI    | disponible | `openai`                  | `gpt-4.5-preview`    |
 | Gemini    | disponible | `google-generativeai`     | `gemini-2.0-flash`   |
-| Anthropic | no usado   | `anthropic` (comentado)   | —                    |
+| Anthropic | integrado, deshabilitado | `anthropic` (comentado en requirements) | `claude-opus-4-7` |
 
 Para habilitar/deshabilitar: editar `ENABLED_PROVIDERS` en `.env`.
+Para habilitar Claude (Anthropic): ver [doc/CLAUDE_CHECKLIST.md](CLAUDE_CHECKLIST.md).
 Para agregar un nuevo proveedor: ver [app/providers.py](../app/providers.py).
 
 ---

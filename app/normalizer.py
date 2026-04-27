@@ -12,6 +12,25 @@ from app.models import Experiment, LLMResponse, NormalizedOutput
 
 _DOUBT_KEYWORDS = ["aunque", "habría", "dudas", "no estoy seguro", "podría", "quizás", "quizas", "sin embargo", "pero"]
 
+_DECISION_KEYS = ("decision", "decisión", "decisión_final", "respuesta")
+_SCORE_KEYS = ("score", "puntaje", "puntuación", "puntuacion", "calificacion", "calificación")
+_JUSTIFICATION_KEYS = ("justification", "justificación", "justificacion", "razon", "razón")
+
+
+def _pick_first(parsed: dict, keys) -> object:
+    for k in keys:
+        if k in parsed and parsed[k] is not None:
+            return parsed[k]
+    return None
+
+
+def _extract_json_block(raw: str) -> str:
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return raw[start:end + 1]
+    return raw
+
 
 def normalize_response(response: LLMResponse, experiment: Experiment) -> NormalizedOutput:
     constraints = experiment.evaluation_constraints
@@ -26,20 +45,31 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
     try:
         parsed = json.loads(raw)
     except (json.JSONDecodeError, ValueError):
-        # Fallback: extract from text
-        text_lower = raw.lower()
-        if any(opt in text_lower for opt in [o.lower() for o in constraints.decision_options if o.lower() == "no"]):
-            decision = "no"
-        score_match = re.search(r"\b(\d+(?:\.\d+)?)\b", raw)
-        if score_match:
-            score = float(score_match.group(1))
-        justification = raw[:200]
-        doubt_flag = True
+        try:
+            parsed = json.loads(_extract_json_block(raw))
+        except (json.JSONDecodeError, ValueError):
+            text_lower = raw.lower()
+            if any(opt in text_lower for opt in [o.lower() for o in constraints.decision_options if o.lower() == "no"]):
+                decision = "no"
+            score_match = re.search(r"\b(\d+(?:\.\d+)?)\b", raw)
+            if score_match:
+                score = float(score_match.group(1))
+            justification = raw[:200]
+            doubt_flag = True
 
-    if parsed is not None:
-        decision = str(parsed.get("decision", "si")).lower().strip()
-        score = float(parsed.get("score", 5.0))
-        justification = str(parsed.get("justification", ""))
+    if isinstance(parsed, dict):
+        d = _pick_first(parsed, _DECISION_KEYS)
+        if d is not None:
+            decision = str(d).lower().strip()
+        s = _pick_first(parsed, _SCORE_KEYS)
+        if s is not None:
+            try:
+                score = float(s)
+            except (TypeError, ValueError):
+                pass
+        j = _pick_first(parsed, _JUSTIFICATION_KEYS)
+        if j is not None:
+            justification = str(j)
 
     # Clamp score to valid range
     score_min = constraints.score_scale_min

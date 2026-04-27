@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from app import config, orchestrator
+from app import config, llm_health, orchestrator, providers
 
 
 class ExperimentRequest(BaseModel):
@@ -27,6 +27,43 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def healthcheck():
         return {"status": "ok"}
+
+    @app.get("/llm/status")
+    def llm_status():
+        """
+        Verifica el estado de cada LLM habilitado.
+        Útil para confirmar que los modelos están operativos antes de
+        enviar un experimento. NO devuelve respuestas mock — si un proveedor
+        falla, lo reporta como `unhealthy`.
+        """
+        report: Dict[str, Any] = {
+            "enabled_providers": sorted(config.ENABLED_PROVIDERS),
+            "default_models": list(config.DEFAULT_MODELS),
+            "models": {
+                "openai": config.OPENAI_MODEL,
+                "gemini": config.GEMINI_MODEL,
+                "anthropic": config.ANTHROPIC_MODEL,
+                "ollama": config.OLLAMA_MODEL,
+                "ollama_base_url": config.OLLAMA_BASE_URL,
+            },
+            "checks": [],
+        }
+        seen = set()
+        for alias in providers.PROVIDER_ALIASES:
+            provider = providers.PROVIDER_ALIASES[alias]
+            if provider in seen:
+                continue
+            seen.add(provider)
+            check = llm_health._PROVIDER_CHECKS.get(provider)
+            if check is None:
+                continue
+            ok, detail = check()
+            report["checks"].append({
+                "provider": provider,
+                "healthy": ok,
+                "detail": detail,
+            })
+        return report
 
     @app.post("/experiments/run")
     def run_experiment(request: ExperimentRequest):

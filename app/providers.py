@@ -31,6 +31,8 @@ PROVIDER_ALIASES: Dict[str, str] = {
     "gpt": "openai",
     "gemini": "gemini",
     "google": "gemini",
+    "claude": "anthropic",
+    "anthropic": "anthropic",
 }
 
 

@@ -19,6 +19,7 @@ GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 # Modelos por proveedor
 OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.5-preview")
 GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-7")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3")
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 

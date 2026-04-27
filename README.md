@@ -132,11 +132,89 @@ reiniciar nada del lado de los archivos `.py`.
 
 ### Aliases válidos en `model_names` de la API
 
-| Alias                         | Mapea a    |
-|-------------------------------|------------|
-| `ollama`, `llama`, `llama3`, `local` | ollama     |
-| `openai`, `chatgpt`, `gpt`           | openai     |
-| `gemini`, `google`                   | gemini     |
+| Alias                         | Mapea a    | Estado                                                  |
+|-------------------------------|------------|---------------------------------------------------------|
+| `ollama`, `llama`, `llama3`, `local` | ollama     | habilitado por defecto                          |
+| `openai`, `chatgpt`, `gpt`           | openai     | listo para usar (config en `.env`)              |
+| `gemini`, `google`                   | gemini     | listo para usar (config en `.env`)              |
+| `claude`, `anthropic`                | anthropic  | integrado pero **deshabilitado** — ver [doc/CLAUDE_CHECKLIST.md](doc/CLAUDE_CHECKLIST.md) |
+
+### ¿Cómo verifico que el LLM está respondiendo de verdad y no es un mock?
+
+> **Los mocks fueron eliminados** del código. Si un proveedor no está habilitado o no responde, el sistema retorna error `422` en vez de inventar respuestas. Las únicas "defaults" que quedan son del normalizer cuando un LLM devuelve JSON inválido — y se imprimen warnings que lo dejan visible.
+
+#### 1. Endpoint de estado: `GET /llm/status`
+
+```bash
+curl http://localhost:8001/llm/status
+```
+
+Devuelve qué proveedores están habilitados, qué modelo usa cada uno, y el resultado del health check (con detalle del error si falla):
+
+```json
+{
+  "enabled_providers": ["ollama"],
+  "default_models": ["ollama"],
+  "models": {
+    "ollama": "llama3.2:latest",
+    "ollama_base_url": "http://localhost:11434",
+    "openai": "gpt-4.5-preview",
+    "gemini": "gemini-2.0-flash"
+  },
+  "checks": [
+    { "provider": "ollama", "healthy": true,  "detail": "ok" },
+    { "provider": "openai", "healthy": false, "detail": "openai no está en ENABLED_PROVIDERS" },
+    { "provider": "gemini", "healthy": false, "detail": "gemini no está en ENABLED_PROVIDERS" }
+  ]
+}
+```
+
+#### 2. Logs del servidor durante un experimento
+
+En la consola del server, cada caso enviado al LLM imprime dos líneas:
+
+```
+[LLM CALL] provider=ollama model=llama3.2:latest target=http://localhost:11434 case=exp_genero_9d992fe6_base_hombre
+[LLM RESP] provider=ollama model=llama3.2:latest elapsed=4.57s chars=166 case=exp_genero_9d992fe6_base_hombre
+```
+
+Cosas que confirman que es real (no mock):
+- `target` muestra la URL/host efectivamente contactado.
+- `elapsed` muestra la latencia (un mock sería instantáneo, < 0.001s; Ollama local típico es 0.3 - 5s; OpenAI/Gemini 0.5 - 3s).
+- `chars` varía entre llamadas — un mock daría siempre el mismo tamaño.
+
+#### 3. Probar Ollama directamente con `curl`
+
+```bash
+# ¿Está corriendo Ollama?
+curl http://localhost:11434/api/tags
+
+# ¿Qué responde el modelo llama3.2:latest?
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3.2:latest",
+  "prompt": "Respondé en JSON: {\"test\":\"ok\"}",
+  "stream": false
+}'
+```
+
+Si ambos comandos responden, Ollama está activo y el modelo está descargado.
+
+#### 4. Comparar respuestas entre corridas
+
+Volvé a lanzar el mismo `pedido` 2-3 veces. Un LLM real devuelve **justificaciones distintas** cada vez (especialmente con `TEMPERATURE > 0`). Un mock daría siempre la misma respuesta.
+
+#### 5. Apagar Ollama y reintentar
+
+```bash
+# Detené Ollama (Ctrl+C en la terminal donde corre `ollama serve`)
+# Llamá al endpoint
+curl -X POST http://localhost:8001/experiments/run \
+  -H "Content-Type: application/json" \
+  -d '{"pedido":"test","sesgo_medir":"genero"}'
+```
+
+Debe responder `422` con el mensaje de health check fallido. Si en cambio
+responde `200` con datos, hay un mock activo (no debería suceder; reportá el bug).
 
 ### Health check automático
 

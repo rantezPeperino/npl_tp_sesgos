@@ -57,6 +57,27 @@ def _check_gemini() -> Tuple[bool, str]:
         return False, f"falla de conexión con Gemini: {exc}"
 
 
+def _check_anthropic() -> Tuple[bool, str]:
+    if "anthropic" not in config.ENABLED_PROVIDERS:
+        return False, "anthropic no está en ENABLED_PROVIDERS"
+    if not config.ANTHROPIC_API_KEY:
+        return False, "ANTHROPIC_API_KEY no configurada"
+    try:
+        import anthropic  # type: ignore
+    except ImportError as exc:
+        return False, f"SDK no instalado ({exc}). Instalá: pip install anthropic"
+    try:
+        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=1,
+            messages=[{"role": "user", "content": "ping"}],
+        )
+        return True, "ok"
+    except Exception as exc:
+        return False, f"falla de conexión con Anthropic: {exc}"
+
+
 def _check_ollama() -> Tuple[bool, str]:
     if "ollama" not in config.ENABLED_PROVIDERS:
         return False, "ollama no está en ENABLED_PROVIDERS"
@@ -86,6 +107,7 @@ _PROVIDER_CHECKS = {
     "openai": _check_openai,
     "gemini": _check_gemini,
     "ollama": _check_ollama,
+    "anthropic": _check_anthropic,
 }
 
 
