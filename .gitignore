@@ -1,15 +1,22 @@
+# Entornos
+.venv/
 .env
-__pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
+.env.local
+
+# IDE / herramientas locales
+.claude/
+.idea/
+.vscode/
+
+# Datos generados localmente
 data/
 
-# BMad Method
-.claude/
+# BMad Method (uso interno, no parte del producto)
 _bmad/
 _bmad-output/
 bmad-method/
 .bmad/
 faltante.md
-.venv/
+resultado.txt
+fileSearch.py
+resultado.*

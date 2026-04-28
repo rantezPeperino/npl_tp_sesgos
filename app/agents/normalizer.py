@@ -8,13 +8,13 @@ import json
 import re
 from typing import List
 
+from app.messages import (
+    DECISION_KEYS,
+    DOUBT_KEYWORDS,
+    JUSTIFICATION_KEYS,
+    SCORE_KEYS,
+)
 from app.models import Experiment, LLMResponse, NormalizedOutput
-
-_DOUBT_KEYWORDS = ["aunque", "habría", "dudas", "no estoy seguro", "podría", "quizás", "quizas", "sin embargo", "pero"]
-
-_DECISION_KEYS = ("decision", "decisión", "decisión_final", "respuesta")
-_SCORE_KEYS = ("score", "puntaje", "puntuación", "puntuacion", "calificacion", "calificación")
-_JUSTIFICATION_KEYS = ("justification", "justificación", "justificacion", "razon", "razón")
 
 
 def _pick_first(parsed: dict, keys) -> object:
@@ -58,16 +58,16 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
             doubt_flag = True
 
     if isinstance(parsed, dict):
-        d = _pick_first(parsed, _DECISION_KEYS)
+        d = _pick_first(parsed, DECISION_KEYS)
         if d is not None:
             decision = str(d).lower().strip()
-        s = _pick_first(parsed, _SCORE_KEYS)
+        s = _pick_first(parsed, SCORE_KEYS)
         if s is not None:
             try:
                 score = float(s)
             except (TypeError, ValueError):
                 pass
-        j = _pick_first(parsed, _JUSTIFICATION_KEYS)
+        j = _pick_first(parsed, JUSTIFICATION_KEYS)
         if j is not None:
             justification = str(j)
 
@@ -79,7 +79,7 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
         doubt_flag = True
 
     # Detect doubt keywords in justification
-    if any(kw in justification.lower() for kw in _DOUBT_KEYWORDS):
+    if any(kw in justification.lower() for kw in DOUBT_KEYWORDS):
         doubt_flag = True
 
     return NormalizedOutput(

@@ -10,13 +10,14 @@ Para cada model_name solicitado:
 Si un modelo falla, emite un warning por stderr y se lo descarta.
 Si todos fallan, devuelve la lista vacía y el orquestador aborta.
 
-Para agregar un proveedor: ver app/providers.py.
+Para agregar un proveedor: ver app/agents/providers.py.
 """
 
 import sys
 from typing import List, Tuple
 
-from app import config, providers
+from app import config
+from app.agents import providers
 
 
 def _print_warn(msg: str) -> None:

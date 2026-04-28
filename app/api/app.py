@@ -1,28 +1,21 @@
 """
-api.py
+api.app
 
-CAPA DE EXPOSICIÓN HTTP DEL SISTEMA.
-Entrada mínima: { "pedido": "...", "sesgo_medir": "..." }.
-El orquestador se encarga del resto (case_id, casos, metadata, reporte).
+Factory de la app FastAPI + endpoints.
 """
 
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 
-from app import config, llm_health, orchestrator, providers
-
-
-class ExperimentRequest(BaseModel):
-    pedido: str = Field(..., min_length=1, description="Texto plano del formulario describiendo el caso a evaluar.")
-    sesgo_medir: str = Field(..., min_length=1, description="Dimensión de sesgo a medir (ej. genero, edad, origen).")
-    model_names: Optional[List[str]] = None
+from app import config
+from app.agents import llm_health, orchestrator, providers
+from app.api.schemas import ExperimentRequest
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="tiltDetector", version="0.3.0")
+    app = FastAPI(title="tiltDetector", version="0.4.0")
 
     @app.get("/health")
     def healthcheck():
@@ -30,12 +23,6 @@ def create_app() -> FastAPI:
 
     @app.get("/llm/status")
     def llm_status():
-        """
-        Verifica el estado de cada LLM habilitado.
-        Útil para confirmar que los modelos están operativos antes de
-        enviar un experimento. NO devuelve respuestas mock — si un proveedor
-        falla, lo reporta como `unhealthy`.
-        """
         report: Dict[str, Any] = {
             "enabled_providers": sorted(config.ENABLED_PROVIDERS),
             "default_models": list(config.DEFAULT_MODELS),
@@ -58,11 +45,9 @@ def create_app() -> FastAPI:
             if check is None:
                 continue
             ok, detail = check()
-            report["checks"].append({
-                "provider": provider,
-                "healthy": ok,
-                "detail": detail,
-            })
+            report["checks"].append(
+                {"provider": provider, "healthy": ok, "detail": detail}
+            )
         return report
 
     @app.post("/experiments/run")
