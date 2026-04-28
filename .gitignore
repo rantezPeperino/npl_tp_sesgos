@@ -1,0 +1,22 @@
+# Entornos
+.venv/
+.env
+.env.local
+
+# IDE / herramientas locales
+.claude/
+.idea/
+.vscode/
+
+# Datos generados localmente
+data/
+
+# BMad Method (uso interno, no parte del producto)
+_bmad/
+_bmad-output/
+bmad-method/
+.bmad/
+faltante.md
+resultado.txt
+fileSearch.py
+resultado.*

@@ -1,0 +1,12 @@
+# Backend (Python)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Variables sensibles
+.env
+.env.local
+
+# Salidas / dumps locales
+resultado.txt
