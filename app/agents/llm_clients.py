@@ -47,11 +47,21 @@ def _call_openai(prompt: str, temperature: float, call_id: str) -> str:
     client = OpenAI(api_key=config.OPENAI_API_KEY)
     _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=openai (cliente nuevo)")
     try:
-        response = client.chat.completions.create(
-            model=config.OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-        )
+        kwargs = {
+            "model": config.OPENAI_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if temperature != 1.0:
+            kwargs["temperature"] = temperature
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if "temperature" in str(exc):
+                _log(f"[LLM] call={call_id} model={config.OPENAI_MODEL} no soporta temperature={temperature}, reintentando sin temperature")
+                kwargs.pop("temperature", None)
+                response = client.chat.completions.create(**kwargs)
+            else:
+                raise
         return response.choices[0].message.content or ""
     finally:
         try:
