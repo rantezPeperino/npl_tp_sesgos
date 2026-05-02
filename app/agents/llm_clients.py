@@ -39,7 +39,48 @@ def _new_call_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _call_openai(prompt: str, temperature: float, call_id: str) -> str:
+def _call_openrouter(prompt: str, temperature: float, call_id: str, model_name: str) -> str:
+    from app import config
+    if not config.OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY no configurada")
+    from openai import OpenAI  # type: ignore
+
+    subkey = providers.extract_subkey(model_name)
+    or_model = subkey or config.OPENROUTER_MODEL
+
+    client = OpenAI(
+        api_key=config.OPENROUTER_API_KEY,
+        base_url=config.OPENROUTER_BASE_URL,
+    )
+    _log(
+        f"[ISOLATION] call={call_id} client_id={id(client):x} provider=openrouter "
+        f"or_model={or_model} (cliente nuevo)"
+    )
+    try:
+        kwargs = {
+            "model": or_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+        }
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if "temperature" in str(exc):
+                _log(f"[LLM] call={call_id} or_model={or_model} no soporta temperature={temperature}, reintentando sin temperature")
+                kwargs.pop("temperature", None)
+                response = client.chat.completions.create(**kwargs)
+            else:
+                raise
+        return response.choices[0].message.content or ""
+    finally:
+        try:
+            client.close()
+            _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=openrouter (cliente cerrado)")
+        except Exception as exc:
+            _log(f"[ISOLATION] call={call_id} provider=openrouter close-error={exc}")
+
+
+def _call_openai(prompt: str, temperature: float, call_id: str, model_name: str = "") -> str:
     from app import config
     if not config.OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY no configurada")
@@ -71,7 +112,7 @@ def _call_openai(prompt: str, temperature: float, call_id: str) -> str:
             _log(f"[ISOLATION] call={call_id} provider=openai close-error={exc}")
 
 
-def _call_anthropic(prompt: str, temperature: float, call_id: str) -> str:
+def _call_anthropic(prompt: str, temperature: float, call_id: str, model_name: str = "") -> str:
     from app import config
     if not config.ANTHROPIC_API_KEY:
         raise ValueError("ANTHROPIC_API_KEY no configurada")
@@ -94,7 +135,7 @@ def _call_anthropic(prompt: str, temperature: float, call_id: str) -> str:
             _log(f"[ISOLATION] call={call_id} provider=anthropic close-error={exc}")
 
 
-def _call_gemini(prompt: str, temperature: float, call_id: str) -> str:
+def _call_gemini(prompt: str, temperature: float, call_id: str, model_name: str = "") -> str:
     from app import config
     if not config.GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY no configurada")
@@ -113,7 +154,7 @@ def _call_gemini(prompt: str, temperature: float, call_id: str) -> str:
         _log(f"[ISOLATION] call={call_id} provider=gemini (modelo descartado)")
 
 
-def _call_ollama(prompt: str, temperature: float, call_id: str) -> str:
+def _call_ollama(prompt: str, temperature: float, call_id: str, model_name: str = "") -> str:
     """
     Llama a Ollama vía HTTP nativo. Garantías de aislamiento:
     - `context: []` explícito → no reusa KV cache de llamadas anteriores
@@ -159,10 +200,11 @@ _PROVIDERS_CALL = {
     "openai": _call_openai,
     "gemini": _call_gemini,
     "anthropic": _call_anthropic,
+    "openrouter": _call_openrouter,
 }
 
 
-def _resolve_model_id(provider: str) -> str:
+def _resolve_model_id(provider: str, model_name: str = "") -> str:
     from app import config
     if provider == "ollama":
         return config.OLLAMA_MODEL
@@ -172,6 +214,8 @@ def _resolve_model_id(provider: str) -> str:
         return config.GEMINI_MODEL
     if provider == "anthropic":
         return config.ANTHROPIC_MODEL
+    if provider == "openrouter":
+        return providers.extract_subkey(model_name) or config.OPENROUTER_MODEL
     return "?"
 
 
@@ -185,6 +229,8 @@ def _resolve_target(provider: str) -> str:
         return "generativelanguage.googleapis.com"
     if provider == "anthropic":
         return "api.anthropic.com"
+    if provider == "openrouter":
+        return "openrouter.ai"
     return "?"
 
 
@@ -207,7 +253,7 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -
     call_id = _new_call_id()
     prompt_hash = _short_hash(prompt)
 
-    model_id = _resolve_model_id(provider)
+    model_id = _resolve_model_id(provider, model_name)
     target = _resolve_target(provider)
 
     _log(
@@ -215,7 +261,7 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str) -
         f"target={target} case={case.case_id} prompt_sha={prompt_hash} prompt_len={len(prompt)}"
     )
     t0 = time.monotonic()
-    raw = call_fn(prompt, temperature, call_id)
+    raw = call_fn(prompt, temperature, call_id, model_name)
     elapsed = time.monotonic() - t0
     _log(
         f"[LLM RESP] call={call_id} provider={provider} model={model_id} "
@@ -240,11 +286,14 @@ def execute_cases_on_models(
             try:
                 responses.append(execute_case_on_model(case, experiment, model_name))
             except Exception as exc:
+                err_msg = str(exc)
+                _log(f"[LLM ERROR] model={model_name} case={case.case_id} error={err_msg[:200]}")
                 responses.append(
                     LLMResponse(
                         model_name=model_name,
                         case_id=case.case_id,
-                        raw_response=json.dumps({"error": str(exc)}, ensure_ascii=False),
+                        raw_response=json.dumps({"error": err_msg}, ensure_ascii=False),
+                        error=err_msg,
                     )
                 )
     return responses

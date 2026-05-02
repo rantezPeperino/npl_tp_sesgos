@@ -34,6 +34,20 @@ def _extract_json_block(raw: str) -> str:
 
 def normalize_response(response: LLMResponse, experiment: Experiment) -> NormalizedOutput:
     constraints = experiment.evaluation_constraints
+
+    if response.error:
+        return NormalizedOutput(
+            model_name=response.model_name,
+            case_id=response.case_id,
+            decision="error",
+            score=0.0,
+            doubt_flag=True,
+            justification=f"LLM call failed: {response.error}",
+            bias_detected=False,
+            bias_category=None,
+            error=response.error,
+        )
+
     raw = response.raw_response.strip()
 
     decision = "si"

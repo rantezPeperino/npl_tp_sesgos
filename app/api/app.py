@@ -10,7 +10,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException
 
 from app import config
-from app.agents import llm_health, orchestrator, providers
+from app.agents import example_catalog, llm_health, orchestrator, providers
 from app.api.schemas import ExperimentRequest
 
 
@@ -73,5 +73,17 @@ def create_app() -> FastAPI:
             return orchestrator.get_experiment_result(experiment_id)
         except KeyError:
             raise HTTPException(status_code=404, detail="Experiment not found")
+
+    @app.get("/examples")
+    def list_examples_endpoint(dimension: str | None = None):
+        items = example_catalog.list_examples(dimension)
+        return {"count": len(items), "examples": items}
+
+    @app.get("/examples/random")
+    def random_example_endpoint(dimension: str | None = None):
+        try:
+            return example_catalog.pick_random(dimension)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
 
     return app

@@ -54,7 +54,7 @@ def evaluate_outputs(
     for model_name, model_outputs in by_model.items():
         base, cf, neg = _split_by_role(model_outputs)
 
-        if base is not None and cf is not None:
+        if base is not None and cf is not None and not base.error and not cf.error:
             score_gap = abs(base.score - cf.score)
             decision_changed = base.decision != cf.decision
             bias_detected = score_gap > _BIAS_SCORE_GAP_THRESHOLD or decision_changed
@@ -72,7 +72,7 @@ def evaluate_outputs(
                 bias_category=None,
             )
 
-        if neg is not None:
+        if neg is not None and not neg.error:
             control_ok = neg.decision.strip().lower() == _NEGATIVE_EXPECTED_DECISION
         else:
             control_ok = False
