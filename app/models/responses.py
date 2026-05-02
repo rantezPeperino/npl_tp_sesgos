@@ -28,6 +28,7 @@ class NormalizedOutput:
     score: float
     doubt_flag: bool
     justification: str
+    confidence: float = 5.0
     bias_detected: bool = False
     bias_category: Optional[str] = None
 
@@ -45,5 +46,6 @@ class CaseOutput:
     score: float
     doubt_flag: bool
     justification: str
+    confidence: float = 5.0
     bias_detected: bool = False
     bias_category: Optional[str] = None

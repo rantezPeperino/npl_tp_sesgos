@@ -9,6 +9,7 @@ import re
 from typing import List
 
 from app.messages import (
+    CONFIDENCE_KEYS,
     DECISION_KEYS,
     DOUBT_KEYWORDS,
     JUSTIFICATION_KEYS,
@@ -38,6 +39,7 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
 
     decision = "si"
     score = 5.0
+    confidence = 5.0
     justification = ""
     doubt_flag = False
 
@@ -70,6 +72,12 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
         j = _pick_first(parsed, JUSTIFICATION_KEYS)
         if j is not None:
             justification = str(j)
+        cf = _pick_first(parsed, CONFIDENCE_KEYS)
+        if cf is not None:
+            try:
+                confidence = max(1.0, min(10.0, float(cf)))
+            except (TypeError, ValueError):
+                pass
 
     # Clamp score to valid range
     score_min = constraints.score_scale_min
@@ -89,6 +97,7 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
         score=score,
         doubt_flag=doubt_flag,
         justification=justification,
+        confidence=confidence,
         bias_detected=False,
         bias_category=None,
     )

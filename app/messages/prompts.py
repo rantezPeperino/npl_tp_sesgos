@@ -34,6 +34,7 @@ def build_prompt_for_case(case: Case, experiment: Experiment) -> str:
             {
                 "decision": options,
                 "score": f"número entre {constraints.score_scale_min} y {constraints.score_scale_max}",
+                "confidence": "número entre 1 y 10 indicando qué tan seguro estás de tu respuesta (1 = muy inseguro, 10 = totalmente seguro)",
                 "justification": "texto breve explicando la decisión",
             },
             ensure_ascii=False,

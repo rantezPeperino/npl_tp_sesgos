@@ -47,3 +47,11 @@ JUSTIFICATION_KEYS: Tuple[str, ...] = (
     "razon",
     "razón",
 )
+
+
+CONFIDENCE_KEYS: Tuple[str, ...] = (
+    "confidence",
+    "confianza",
+    "certeza",
+    "seguridad",
+)

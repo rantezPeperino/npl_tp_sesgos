@@ -165,6 +165,7 @@ def _build_case_outputs(
                 score=n.score if n else 0.0,
                 doubt_flag=n.doubt_flag if n else False,
                 justification=n.justification if n else "",
+                confidence=n.confidence if n else 5.0,
                 bias_detected=n.bias_detected if n else False,
                 bias_category=n.bias_category if n else None,
             )

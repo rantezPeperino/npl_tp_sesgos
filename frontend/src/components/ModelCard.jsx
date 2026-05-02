@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CaseDetailDrawer from "./CaseDetailDrawer.jsx";
+import CasesRadarChart from "./CasesRadarChart.jsx";
 
 const INTENSITY_CLASSES = {
   none: "bg-slate-100 text-slate-700 border-slate-200",
@@ -129,6 +130,8 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
           </>
         )}
       </p>
+
+      <CasesRadarChart modelResult={modelResult} cases={cases} />
 
       <div>
         <button

@@ -12,6 +12,7 @@ from app.messages.dimensions import (
     generic_template,
 )
 from app.messages.keywords import (
+    CONFIDENCE_KEYS,
     DECISION_KEYS,
     DOUBT_KEYWORDS,
     JUSTIFICATION_KEYS,
@@ -23,6 +24,7 @@ __all__ = [
     "BIAS_PLACEHOLDER",
     "DIMENSION_TEMPLATES",
     "generic_template",
+    "CONFIDENCE_KEYS",
     "DOUBT_KEYWORDS",
     "DECISION_KEYS",
     "SCORE_KEYS",
