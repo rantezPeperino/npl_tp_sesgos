@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import GlobalSummary from "../components/GlobalSummary.jsx";
+import ModelsRadarChart from "../components/ModelsRadarChart.jsx";
 import ResultsTabs from "../components/ResultsTabs.jsx";
 
 export default function Results({ exp }) {
@@ -44,6 +45,8 @@ export default function Results({ exp }) {
       </header>
 
       <GlobalSummary summary={result.global_summary} />
+
+      <ModelsRadarChart modelResults={result.model_results} />
 
       <ResultsTabs result={result} />
     </div>
