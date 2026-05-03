@@ -15,6 +15,7 @@ load_dotenv(Path(__file__).parent / ".env")
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 
 # Modelos por proveedor
 OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.5-preview")
@@ -22,6 +23,8 @@ GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-7")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3")
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
 # Proveedores habilitados (separados por coma): ollama, openai, gemini
 _raw_providers = os.getenv("ENABLED_PROVIDERS", "")
