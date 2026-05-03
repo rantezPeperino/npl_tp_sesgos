@@ -461,6 +461,7 @@ app/
 doc/
   SPEC.md
   EXAMPLE.md
+  MITIGATION_AB.md
 postman_collection.json
 postman_environment.json
 .env.example

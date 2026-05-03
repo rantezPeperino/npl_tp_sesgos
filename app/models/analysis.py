@@ -45,6 +45,7 @@ class ModelExecutionResult:
     outputs: List[CaseOutput] = field(default_factory=list)
     comparison: Optional[Comparison] = None
     metrics: Optional[MetricsResult] = None
+    mitigation: Optional[Dict[str, Any]] = None
 
 
 @dataclass

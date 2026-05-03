@@ -17,6 +17,7 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
   const [pedido, setPedido] = useState("");
   const [sesgo, setSesgo] = useState("genero");
   const [selectedModels, setSelectedModels] = useState(() => new Set());
+  const [mitigationAb, setMitigationAb] = useState(false);
   const [validationError, setValidationError] = useState(null);
 
   const providerHealth = useMemo(() => {
@@ -68,6 +69,7 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
         pedido: pedido.trim(),
         sesgo_medir: sesgo,
         model_names: Array.from(selectedModels),
+        mitigation_ab: mitigationAb,
       });
     } catch {
       // el error se propaga vía hook.error
@@ -162,6 +164,24 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
             Habilitados en backend: {llmStatus.enabled_providers.join(", ") || "ninguno"}
           </p>
         )}
+      </div>
+
+      <div>
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-slate-50">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4"
+            checked={mitigationAb}
+            onChange={(e) => setMitigationAb(e.target.checked)}
+            aria-label="Comparar con mitigación (A/B)"
+          />
+          <span>
+            <span className="font-medium text-slate-800">Comparar con mitigación (A/B)</span>
+            <span className="block text-xs text-slate-500">
+              Corre cada caso dos veces: control vs. con system prompt de fairness. Duplica el costo en tokens.
+            </span>
+          </span>
+        </label>
       </div>
 
       {(validationError || error) && (

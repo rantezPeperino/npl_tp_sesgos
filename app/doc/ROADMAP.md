@@ -152,3 +152,4 @@ Para agregar un nuevo proveedor: ver [app/providers.py](../app/providers.py).
 - Soporte para múltiples bias_dimensions en un mismo experimento.
 - Tests automatizados de integración con LLM mock para CI.
 - Frontend de consumo (actualmente solo Postman/curl).
+- Mitigación A/B por system prompt — ver [MITIGATION_AB.md](MITIGATION_AB.md).

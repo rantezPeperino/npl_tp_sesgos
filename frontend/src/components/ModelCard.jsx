@@ -133,6 +133,57 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
 
       <CasesRadarChart modelResult={modelResult} cases={cases} />
 
+      {modelResult.mitigation && (() => {
+        const m = modelResult.mitigation;
+        const mitiMetrics = m.results?.metrics || {};
+        const mitiComparison = m.results?.comparison || {};
+        const ctrlScoreGap = Number(metrics.score_gap ?? 0);
+        const mitiScoreGap = Number(mitiMetrics.score_gap ?? 0);
+        const ctrlDecisionChanged = !!metrics.decision_changed;
+        const mitiDecisionChanged = !!mitiMetrics.decision_changed;
+        const ctrlIntensity = metrics.bias_intensity || "none";
+        const mitiIntensity = mitiMetrics.bias_intensity || "none";
+        const baseOutput = (modelResult.outputs || []).find((o) => o.case_id?.includes("_base_"));
+        const mitiBaseOutput = (m.results?.outputs || []).find((o) => o.case_id?.includes("_base_"));
+        const delta = Number(m.score_gap_delta ?? 0);
+        return (
+          <section className="rounded-md border border-indigo-200 bg-indigo-50/40 p-4">
+            <h4 className="mb-3 text-sm font-semibold text-indigo-900">
+              A/B: control vs. mitigación (system prompt de fairness)
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-slate-200 bg-white p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Control
+                </p>
+                <ul className="space-y-1 text-sm text-slate-700">
+                  <li>decision: <span className="font-medium">{baseOutput?.decision ?? "—"}</span></li>
+                  <li>score_gap: <span className="font-medium">{ctrlScoreGap.toFixed(2)}</span></li>
+                  <li>decision_changed: <span className="font-medium">{ctrlDecisionChanged ? "true" : "false"}</span></li>
+                  <li>bias_intensity: <span className="font-medium">{ctrlIntensity}</span></li>
+                </ul>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-white p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Con mitigación
+                </p>
+                <ul className="space-y-1 text-sm text-slate-700">
+                  <li>decision: <span className="font-medium">{mitiBaseOutput?.decision ?? "—"}</span></li>
+                  <li>score_gap: <span className="font-medium">{mitiScoreGap.toFixed(2)}</span></li>
+                  <li>decision_changed: <span className="font-medium">{mitiDecisionChanged ? "true" : "false"}</span></li>
+                  <li>bias_intensity: <span className="font-medium">{mitiIntensity}</span></li>
+                </ul>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-indigo-900">
+              Δ score_gap: <span className="font-semibold">{delta >= 0 ? "+" : ""}{delta.toFixed(2)}</span>
+              {"  ·  "}
+              Flip recuperado: <span className="font-semibold">{m.decision_flip_recovered ? "sí" : "no"}</span>
+            </p>
+          </section>
+        );
+      })()}
+
       <div>
         <button
           type="button"
