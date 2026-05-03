@@ -21,3 +21,4 @@ class ExperimentRequest(BaseModel):
         description="Dimensión de sesgo a medir (ej. genero, edad, origen).",
     )
     model_names: Optional[List[str]] = None
+    mitigation_ab: bool = False

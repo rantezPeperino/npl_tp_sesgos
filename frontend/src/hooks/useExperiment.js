@@ -31,11 +31,11 @@ export function useExperiment() {
     refreshLlmStatus();
   }, [refreshLlmStatus]);
 
-  const submit = useCallback(async ({ pedido, sesgo_medir, model_names }) => {
+  const submit = useCallback(async ({ pedido, sesgo_medir, model_names, mitigation_ab = false }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await runExperiment({ pedido, sesgo_medir, model_names });
+      const data = await runExperiment({ pedido, sesgo_medir, model_names, mitigation_ab });
       setResult(data);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       return data;

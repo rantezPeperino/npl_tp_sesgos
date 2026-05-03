@@ -24,9 +24,7 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
   const [pedido, setPedido] = useState("");
   const [sesgo, setSesgo] = useState("genero");
   const [selectedModels, setSelectedModels] = useState(() => new Set());
-  const [openrouterModels, setOpenrouterModels] = useState(
-    DEFAULT_OPENROUTER_MODELS.join("\n")
-  );
+  const [mitigationAb, setMitigationAb] = useState(false);
   const [validationError, setValidationError] = useState(null);
 
   const providerHealth = useMemo(() => {
@@ -91,7 +89,8 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
       await onSubmit({
         pedido: pedido.trim(),
         sesgo_medir: sesgo,
-        model_names: finalModels,
+        model_names: Array.from(selectedModels),
+        mitigation_ab: mitigationAb,
       });
     } catch {
       // el error se propaga vía hook.error
@@ -206,37 +205,23 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
         )}
       </div>
 
-      {selectedModels.has("openrouter") && (
-        <div>
-          <label
-            htmlFor="openrouter-models"
-            className="mb-1 block text-sm font-medium text-slate-800"
-          >
-            Modelos OpenRouter (uno por línea)
-          </label>
-          <textarea
-            id="openrouter-models"
-            value={openrouterModels}
-            onChange={(e) => setOpenrouterModels(e.target.value)}
-            rows={4}
-            placeholder={"openai/gpt-4o-mini\nanthropic/claude-haiku-4.5\nmeta-llama/llama-3.3-70b-instruct"}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      <div>
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-slate-50">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4"
+            checked={mitigationAb}
+            onChange={(e) => setMitigationAb(e.target.checked)}
+            aria-label="Comparar con mitigación (A/B)"
           />
-          <p className="mt-1 text-xs text-slate-500">
-            Cada línea se envía como un modelo independiente vía OpenRouter (formato{" "}
-            <code>provider/model-id</code>). Catálogo:{" "}
-            <a
-              href="https://openrouter.ai/models"
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              openrouter.ai/models
-            </a>
-            .
-          </p>
-        </div>
-      )}
+          <span>
+            <span className="font-medium text-slate-800">Comparar con mitigación (A/B)</span>
+            <span className="block text-xs text-slate-500">
+              Corre cada caso dos veces: control vs. con system prompt de fairness. Duplica el costo en tokens.
+            </span>
+          </span>
+        </label>
+      </div>
 
       {(validationError || error) && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -68,7 +68,7 @@ def build_experiment_from_payload(payload: Dict[str, Any]) -> Experiment:
     )
 
 
-def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str]) -> ExperimentResult:
+def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str], mitigation_ab: bool = False) -> ExperimentResult:
     healthy_models = llm_health.filter_healthy_models(model_names)
     if not healthy_models:
         raise ValueError(
@@ -112,6 +112,40 @@ def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str]) -> Exp
         temperature=payload["metadata"].get("temperature"),
         prompt_version=payload["metadata"].get("prompt_version"),
     )
+
+    if mitigation_ab:
+        from app.agents.mitigation import (
+            MITIGATION_SYSTEM_PROMPT,
+            build_mitigation_block,
+        )
+
+        miti_raw_responses = llm_clients.execute_cases_on_models(
+            cases, experiment, healthy_models, system_prompt=MITIGATION_SYSTEM_PROMPT
+        )
+        miti_normalized = normalizer.normalize_responses(miti_raw_responses, experiment)
+        miti_control = control.evaluate_outputs(miti_normalized, experiment)
+        _propagate_bias(miti_normalized, miti_control, experiment.bias_dimension)
+        miti_outputs_by_model: Dict[str, List[NormalizedOutput]] = {}
+        for o in miti_normalized:
+            miti_outputs_by_model.setdefault(o.model_name, []).append(o)
+        miti_metrics = metrics.calculate_metrics_per_model(miti_control, miti_outputs_by_model)
+
+        miti_results_by_model: Dict[str, ModelExecutionResult] = {}
+        for model_name in {r.model_name for r in miti_raw_responses}:
+            outputs = _build_case_outputs(model_name, cases, miti_raw_responses, miti_normalized)
+            ctrl = miti_control.get(model_name)
+            miti_results_by_model[model_name] = ModelExecutionResult(
+                model_name=model_name,
+                outputs=outputs,
+                comparison=ctrl.comparison if ctrl else None,
+                metrics=miti_metrics.get(model_name),
+            )
+
+        for mr in result.model_results:
+            miti_mr = miti_results_by_model.get(mr.model_name)
+            if miti_mr is None:
+                continue
+            mr.mitigation = build_mitigation_block(mr, miti_mr, MITIGATION_SYSTEM_PROMPT)
 
     _EXPERIMENTS[result.experiment_id] = result
 
