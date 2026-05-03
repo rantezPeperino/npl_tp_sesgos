@@ -79,6 +79,26 @@ def _check_anthropic() -> Tuple[bool, str]:
         return False, f"falla de conexión con Anthropic: {exc}"
 
 
+def _check_openrouter() -> Tuple[bool, str]:
+    if "openrouter" not in config.ENABLED_PROVIDERS:
+        return False, "openrouter no está en ENABLED_PROVIDERS"
+    if not config.OPENROUTER_API_KEY:
+        return False, "OPENROUTER_API_KEY no configurada"
+    try:
+        from openai import OpenAI  # type: ignore
+    except ImportError as exc:
+        return False, f"SDK no instalado ({exc}). Instalá: pip install openai"
+    try:
+        client = OpenAI(
+            api_key=config.OPENROUTER_API_KEY,
+            base_url=config.OPENROUTER_BASE_URL,
+        )
+        list(client.models.list())[:1]
+        return True, "ok"
+    except Exception as exc:
+        return False, f"falla de conexión con OpenRouter: {exc}"
+
+
 def _check_ollama() -> Tuple[bool, str]:
     if "ollama" not in config.ENABLED_PROVIDERS:
         return False, "ollama no está en ENABLED_PROVIDERS"
@@ -109,6 +129,7 @@ _PROVIDER_CHECKS = {
     "gemini": _check_gemini,
     "ollama": _check_ollama,
     "anthropic": _check_anthropic,
+    "openrouter": _check_openrouter,
 }
 
 

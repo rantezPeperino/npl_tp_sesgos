@@ -36,6 +36,8 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
   const intensity = metrics.bias_intensity || "none";
   const scoreGap = Number(metrics.score_gap ?? 0);
   const scoreGapPct = Math.min(100, Math.max(0, (scoreGap / 10) * 100));
+  const errorOutputs = (modelResult.outputs || []).filter((o) => o.error);
+  const hasErrors = errorOutputs.length > 0;
 
   return (
     <article className="space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -49,11 +51,31 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
           </p>
         </div>
         <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${INTENSITY_CLASSES[intensity] || INTENSITY_CLASSES.none}`}
+          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+            hasErrors
+              ? "bg-red-100 text-red-800 border-red-200"
+              : INTENSITY_CLASSES[intensity] || INTENSITY_CLASSES.none
+          }`}
         >
-          bias_intensity: {intensity}
+          {hasErrors ? "evaluación fallida" : `bias_intensity: ${intensity}`}
         </span>
       </header>
+
+      {hasErrors && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="font-semibold">
+            No se pudo evaluar el sesgo: {errorOutputs.length} de{" "}
+            {modelResult.outputs?.length ?? 0} llamadas al modelo fallaron.
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
+            {errorOutputs.map((o) => (
+              <li key={o.case_id}>
+                <span className="font-mono">{o.case_id}</span>: {o.error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
@@ -75,22 +97,30 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
                 <tr key={row.type} className="border-b border-slate-100">
                   <td className="py-2 pr-3 font-medium text-slate-700">{row.label}</td>
                   <td className="py-2 pr-3 text-slate-600">{c?.attribute_value || "—"}</td>
-                  <td className="py-2 pr-3 text-slate-600">{o?.decision ?? "—"}</td>
-                  <td className="py-2 pr-3 text-slate-600">
-                    {typeof o?.score === "number" ? o.score.toFixed(1) : "—"}
-                  </td>
-                  <td className="py-2 pr-3 text-slate-600">
-                    {o ? (o.doubt_flag ? "sí" : "no") : "—"}
-                  </td>
-                  <td className="py-2 pr-3">
-                    {o?.bias_detected ? (
-                      <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                        sí
-                      </span>
-                    ) : (
-                      <span className="text-slate-500">no</span>
-                    )}
-                  </td>
+                  {o?.error ? (
+                    <td colSpan={4} className="py-2 pr-3 text-xs text-red-700">
+                      <span className="font-medium">error:</span> {o.error}
+                    </td>
+                  ) : (
+                    <>
+                      <td className="py-2 pr-3 text-slate-600">{o?.decision ?? "—"}</td>
+                      <td className="py-2 pr-3 text-slate-600">
+                        {typeof o?.score === "number" ? o.score.toFixed(1) : "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-600">
+                        {o ? (o.doubt_flag ? "sí" : "no") : "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {o?.bias_detected ? (
+                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                            sí
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">no</span>
+                        )}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -120,13 +150,21 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
       </div>
 
       <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
-        {INTENSITY_TEXT[intensity] || INTENSITY_TEXT.none}
-        {!metrics.control_validation && (
+        {hasErrors ? (
+          <span className="font-medium text-red-700">
+            No hay veredicto de sesgo: una o más llamadas al modelo fallaron.
+          </span>
+        ) : (
           <>
-            {" "}
-            <span className="font-medium text-red-700">
-              El modelo falla en el caso de control, resultados no confiables.
-            </span>
+            {INTENSITY_TEXT[intensity] || INTENSITY_TEXT.none}
+            {!metrics.control_validation && (
+              <>
+                {" "}
+                <span className="font-medium text-red-700">
+                  El modelo falla en el caso de control, resultados no confiables.
+                </span>
+              </>
+            )}
           </>
         )}
       </p>

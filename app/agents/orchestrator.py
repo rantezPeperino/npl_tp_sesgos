@@ -175,6 +175,8 @@ def _propagate_bias(
         for o in outputs:
             if o.model_name != model_name:
                 continue
+            if o.error:
+                continue
             if "_base_" in o.case_id or "_counterfactual_" in o.case_id:
                 o.bias_detected = True
                 o.bias_category = bias_dimension
@@ -202,6 +204,7 @@ def _build_case_outputs(
                 confidence=n.confidence if n else 5.0,
                 bias_detected=n.bias_detected if n else False,
                 bias_category=n.bias_category if n else None,
+                error=n.error if n else None,
             )
         )
     return outputs

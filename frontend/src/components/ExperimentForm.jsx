@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchRandomExample } from "../api/tiltApi";
 
 const SESGO_OPTIONS = [
   "genero",
@@ -11,7 +12,13 @@ const SESGO_OPTIONS = [
   "nivel_socioeconomico",
 ];
 
-const ALL_PROVIDERS = ["ollama", "openai", "gemini", "anthropic"];
+const ALL_PROVIDERS = ["ollama", "openai", "gemini", "anthropic", "openrouter"];
+
+const DEFAULT_OPENROUTER_MODELS = [
+  "openai/gpt-4o-mini",
+  "anthropic/claude-haiku-4.5",
+  "meta-llama/llama-3.3-70b-instruct",
+];
 
 export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) {
   const [pedido, setPedido] = useState("");
@@ -59,8 +66,22 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
       setValidationError("Seleccioná una dimensión de sesgo.");
       return;
     }
-    if (selectedModels.size === 0) {
+    const baseModels = Array.from(selectedModels).filter((m) => m !== "openrouter");
+    const openrouterSlugs = selectedModels.has("openrouter")
+      ? openrouterModels
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((s) => `openrouter:${s}`)
+      : [];
+    const finalModels = [...baseModels, ...openrouterSlugs];
+
+    if (finalModels.length === 0) {
       setValidationError("Seleccioná al menos un modelo.");
+      return;
+    }
+    if (selectedModels.has("openrouter") && openrouterSlugs.length === 0) {
+      setValidationError("OpenRouter está seleccionado pero no hay modelos en la lista.");
       return;
     }
 
@@ -79,12 +100,30 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label
-          htmlFor="pedido"
-          className="mb-1 block text-sm font-medium text-slate-800"
-        >
-          Pedido (texto libre)
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label
+            htmlFor="pedido"
+            className="block text-sm font-medium text-slate-800"
+          >
+            Pedido (texto libre)
+          </label>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const ex = await fetchRandomExample(sesgo);
+                setPedido(ex.pedido);
+              } catch (err) {
+                setValidationError(
+                  err?.message || "No se pudo generar un ejemplo."
+                );
+              }
+            }}
+            className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Generar ejemplo
+          </button>
+        </div>
         <textarea
           id="pedido"
           value={pedido}

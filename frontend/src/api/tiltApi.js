@@ -40,3 +40,9 @@ export async function getHealth() {
   const res = await fetch(`${BASE}/health`);
   return handleJson(res);
 }
+
+export async function fetchRandomExample(dimension) {
+  const qs = dimension ? `?dimension=${encodeURIComponent(dimension)}` : "";
+  const res = await fetch(`${BASE}/examples/random${qs}`);
+  return handleJson(res);
+}

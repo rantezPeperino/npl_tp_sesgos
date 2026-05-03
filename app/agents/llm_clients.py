@@ -171,10 +171,11 @@ _PROVIDERS_CALL = {
     "openai": _call_openai,
     "gemini": _call_gemini,
     "anthropic": _call_anthropic,
+    "openrouter": _call_openrouter,
 }
 
 
-def _resolve_model_id(provider: str) -> str:
+def _resolve_model_id(provider: str, model_name: str = "") -> str:
     from app import config
     if provider == "ollama":
         return config.OLLAMA_MODEL
@@ -184,6 +185,8 @@ def _resolve_model_id(provider: str) -> str:
         return config.GEMINI_MODEL
     if provider == "anthropic":
         return config.ANTHROPIC_MODEL
+    if provider == "openrouter":
+        return providers.extract_subkey(model_name) or config.OPENROUTER_MODEL
     return "?"
 
 
@@ -197,6 +200,8 @@ def _resolve_target(provider: str) -> str:
         return "generativelanguage.googleapis.com"
     if provider == "anthropic":
         return "api.anthropic.com"
+    if provider == "openrouter":
+        return "openrouter.ai"
     return "?"
 
 
@@ -219,7 +224,7 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
     call_id = _new_call_id()
     prompt_hash = _short_hash(prompt)
 
-    model_id = _resolve_model_id(provider)
+    model_id = _resolve_model_id(provider, model_name)
     target = _resolve_target(provider)
 
     _log(
@@ -252,11 +257,14 @@ def execute_cases_on_models(
             try:
                 responses.append(execute_case_on_model(case, experiment, model_name, system_prompt))
             except Exception as exc:
+                err_msg = str(exc)
+                _log(f"[LLM ERROR] model={model_name} case={case.case_id} error={err_msg[:200]}")
                 responses.append(
                     LLMResponse(
                         model_name=model_name,
                         case_id=case.case_id,
-                        raw_response=json.dumps({"error": str(exc)}, ensure_ascii=False),
+                        raw_response=json.dumps({"error": err_msg}, ensure_ascii=False),
+                        error=err_msg,
                     )
                 )
     return responses

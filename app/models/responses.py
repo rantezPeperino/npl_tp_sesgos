@@ -17,6 +17,7 @@ class LLMResponse:
     model_name: str
     case_id: str
     raw_response: str
+    error: Optional[str] = None
 
 
 @dataclass
@@ -31,6 +32,7 @@ class NormalizedOutput:
     confidence: float = 5.0
     bias_detected: bool = False
     bias_category: Optional[str] = None
+    error: Optional[str] = None
 
 
 @dataclass
@@ -49,3 +51,4 @@ class CaseOutput:
     confidence: float = 5.0
     bias_detected: bool = False
     bias_category: Optional[str] = None
+    error: Optional[str] = None

@@ -33,14 +33,33 @@ PROVIDER_ALIASES: Dict[str, str] = {
     "google": "gemini",
     "claude": "anthropic",
     "anthropic": "anthropic",
+    "openrouter": "openrouter",
+    "or": "openrouter",
 }
 
 
 def resolve_provider(model_name: str) -> str:
-    key = model_name.lower().split("-")[0]
+    raw = model_name.lower().strip()
+    # Soporte para sintaxis "provider:model" (ej: "openrouter:openai/gpt-4o-mini").
+    if ":" in raw:
+        prefix = raw.split(":", 1)[0]
+        if prefix in PROVIDER_ALIASES:
+            return PROVIDER_ALIASES[prefix]
+    key = raw.split("-")[0]
     if key not in PROVIDER_ALIASES:
         raise ValueError(
             f"Modelo no soportado: '{model_name}'. "
             f"Aliases válidos: {sorted(PROVIDER_ALIASES.keys())}"
         )
     return PROVIDER_ALIASES[key]
+
+
+def extract_subkey(model_name: str) -> str:
+    """
+    Para sintaxis "provider:subkey", devuelve la parte después del ':'.
+    Si no hay ':', devuelve string vacío.
+    Ej: "openrouter:openai/gpt-4o-mini" -> "openai/gpt-4o-mini"
+    """
+    if ":" in model_name:
+        return model_name.split(":", 1)[1].strip()
+    return ""
