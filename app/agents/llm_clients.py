@@ -93,8 +93,19 @@ def _call_anthropic(prompt: str, temperature: float, call_id: str, model_id: str
         }
         if system_prompt:
             create_kwargs["system"] = system_prompt
-        message = client.messages.create(**create_kwargs)
-        return message.content[0].text
+        try:
+            message = client.messages.create(**create_kwargs)
+            return message.content[0].text
+        except Exception as exc:
+            # Si el modelo rechaza temperature, reintentar sin él
+            if "temperature" in str(exc) and "deprecated" in str(exc).lower():
+                _log(f"[LLM] call={call_id} model={model_id} temperature rechazado, reintentando sin temperature")
+                logger.warning(f"[ANTHROPIC] model={model_id} no soporta temperature, reintentando sin parámetro")
+                create_kwargs.pop("temperature", None)
+                message = client.messages.create(**create_kwargs)
+                return message.content[0].text
+            else:
+                raise
     finally:
         try:
             client.close()
@@ -115,11 +126,21 @@ def _call_gemini(prompt: str, temperature: float, call_id: str, model_id: str, s
         model = genai.GenerativeModel(model_id)
     _log(f"[ISOLATION] call={call_id} client_id={id(model):x} provider=gemini (modelo nuevo)")
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": temperature},
-        )
-        return response.text
+        try:
+            response = model.generate_content(
+                prompt,
+                generation_config={"temperature": temperature},
+            )
+            return response.text
+        except Exception as exc:
+            # Si el modelo rechaza temperature, reintentar sin él
+            if "temperature" in str(exc).lower():
+                _log(f"[LLM] call={call_id} model={model_id} temperature rechazado, reintentando sin temperature")
+                logger.warning(f"[GEMINI] model={model_id} no soporta temperature, reintentando sin parámetro")
+                response = model.generate_content(prompt)
+                return response.text
+            else:
+                raise
     finally:
         del model
         _log(f"[ISOLATION] call={call_id} provider=gemini (modelo descartado)")
