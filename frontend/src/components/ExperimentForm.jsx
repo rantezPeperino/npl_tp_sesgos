@@ -173,29 +173,23 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
 
         const modelInfo = modelsMap[modelId];
         if (modelInfo && !modelInfo.healthy) {
-          const isConnectionError = modelInfo.detail?.includes("falla de conexión") ||
-                                   modelInfo.detail?.includes("timeout") ||
-                                   modelInfo.detail?.includes("no responde");
-
-          if (isConnectionError && modelInfo.provider) {
-            const timeoutId = setTimeout(() => {
-              toggleModel(modelId);
-              setModelErrors((prev) => ({
-                ...prev,
-                [modelId]: modelInfo.detail
-              }));
-              setRetryTimeouts((prev) => {
-                const next = { ...prev };
-                delete next[modelId];
-                return next;
-              });
-            }, 10000);
-
-            setRetryTimeouts((prev) => ({
+          const timeoutId = setTimeout(() => {
+            toggleModel(modelId);
+            setModelErrors((prev) => ({
               ...prev,
-              [modelId]: timeoutId
+              [modelId]: modelInfo.detail
             }));
-          }
+            setRetryTimeouts((prev) => {
+              const next = { ...prev };
+              delete next[modelId];
+              return next;
+            });
+          }, 10000);
+
+          setRetryTimeouts((prev) => ({
+            ...prev,
+            [modelId]: timeoutId
+          }));
         }
       });
     } else {
