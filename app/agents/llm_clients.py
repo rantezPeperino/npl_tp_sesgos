@@ -21,9 +21,9 @@ import logging
 import sys
 import time
 import uuid
-from typing import List
+from typing import Any, Dict, List
 
-from app.agents import providers
+from app.agents import json_builder, providers
 from app.logging_setup import logger
 from app.messages import build_prompt_for_case
 from app.models import Case, Experiment, LLMResponse
@@ -242,35 +242,77 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
     if call_fn is None:
         raise ValueError(f"Proveedor sin implementación: {provider}")
 
-    prompt = build_prompt_for_case(case, experiment)
+    # NUEVO: Usar JSON en lugar de prompts en párrafo
+    case_json = _build_case_json(case, experiment)
+    prompt_json = json.dumps(case_json, ensure_ascii=False, indent=2)
+
     temperature = float(config.TEMPERATURE)
     call_id = _new_call_id()
-    prompt_hash = _short_hash(prompt)
+    prompt_hash = _short_hash(prompt_json)
 
     target = _resolve_target(provider)
 
     _log(
-        f"[LLM CALL] call={call_id} provider={provider} model={model_name} "
-        f"target={target} case={case.case_id} prompt_sha={prompt_hash} prompt_len={len(prompt)}"
+        f"[LLM CALL JSON] call={call_id} provider={provider} model={model_name} "
+        f"target={target} case={case.case_id} format=json prompt_sha={prompt_hash}"
     )
 
-    logger.info(f"[LLM CALL] case={case.case_id} model={model_name} provider={provider}")
-    logger.debug(f"[PROMPT ENVIADO] case={case.case_id}\n{prompt}")
+    logger.info(f"[LLM CALL JSON] case={case.case_id} model={model_name} provider={provider} format=json")
+    logger.debug(f"[JSON ENVIADO] case={case.case_id}\n{prompt_json}")
     if system_prompt:
         logger.debug(f"[SYSTEM PROMPT] case={case.case_id}\n{system_prompt}")
 
     t0 = time.monotonic()
-    raw = call_fn(prompt, temperature, call_id, model_name, system_prompt)
+    raw = call_fn(prompt_json, temperature, call_id, model_name, system_prompt)
     elapsed = time.monotonic() - t0
     _log(
-        f"[LLM RESP] call={call_id} provider={provider} model={model_name} "
-        f"elapsed={elapsed:.2f}s chars={len(raw)} resp_sha={_short_hash(raw)} case={case.case_id}"
+        f"[LLM RESP JSON] call={call_id} provider={provider} model={model_name} "
+        f"elapsed={elapsed:.2f}s chars={len(raw)} case={case.case_id}"
     )
 
-    logger.info(f"[LLM RESP] case={case.case_id} model={model_name} elapsed={elapsed:.2f}s")
+    logger.info(f"[LLM RESP JSON] case={case.case_id} model={model_name} elapsed={elapsed:.2f}s")
     logger.debug(f"[RESPUESTA CRUDA] case={case.case_id}\n{raw}")
 
-    return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw, prompt_sent=prompt)
+    return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw, prompt_sent=prompt_json)
+
+
+def _build_case_json(case: Case, experiment: Experiment) -> Dict[str, Any]:
+    """
+    Construye el JSON del caso en lugar de un prompt en párrafo.
+    Incluye información estructurada para que el LLM analice como JSON.
+    """
+    case_type = "base"
+    if "_counterfactual_" in case.case_id:
+        case_type = "counterfactual"
+    elif "_negative_" in case.case_id:
+        case_type = "negative"
+
+    case_json = {
+        "case_id": case.case_id,
+        "case_type": case_type,
+        "experiment_id": experiment.experiment_id,
+        "bias_dimension": experiment.bias_dimension,
+        "attribute_context": case.attribute_value,
+        "evaluation": {
+            "role": experiment.task.role_to_evaluate,
+            "question": experiment.task.question,
+            "scenario": case.rendered_prompt,
+        },
+        "constraints": {
+            "response_format": "json_strict",
+            "required_fields": ["decision", "score", "confidence", "justification"],
+            "score_range": {
+                "min": experiment.evaluation_constraints.score_scale_min,
+                "max": experiment.evaluation_constraints.score_scale_max,
+            },
+        },
+    }
+
+    if case_type == "negative":
+        case_json["control_test"] = True
+        case_json["instruction_override"] = "Evalúa neutralmente sin enfatizar la característica mencionada."
+
+    return case_json
 
 
 def execute_cases_on_models(
