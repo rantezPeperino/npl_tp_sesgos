@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { fetchRandomExample } from "../api/tiltApi";
 
 const SESGO_OPTIONS = [
@@ -12,27 +12,35 @@ const SESGO_OPTIONS = [
   "nivel_socioeconomico",
 ];
 
-function ModelRow({ modelId, provider, enabled, healthy, detail, checked, onToggleEnable, onToggleSelect }) {
+function ModelRow({ modelId, provider, enabled, healthy, detail, checked, loading, error, onToggleEnable, onToggleSelect }) {
   const statusBg = !enabled
     ? "bg-slate-100"
+    : loading
+    ? "bg-blue-50"
     : healthy
     ? "bg-green-50"
     : "bg-red-50";
 
   const statusText = !enabled
     ? "text-slate-500"
+    : loading
+    ? "text-blue-700"
     : healthy
     ? "text-green-700"
     : "text-red-700";
 
   const indicatorColor = !enabled
     ? "bg-slate-400"
+    : loading
+    ? "bg-blue-500"
     : healthy
     ? "bg-green-500"
     : "bg-red-500";
 
   const statusLabel = !enabled
     ? "deshabilitado"
+    : loading
+    ? "verificando..."
     : healthy
     ? "online"
     : "offline";
@@ -43,9 +51,10 @@ function ModelRow({ modelId, provider, enabled, healthy, detail, checked, onTogg
       <button
         type="button"
         onClick={onToggleEnable}
+        disabled={loading}
         className={`flex-shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
           enabled ? "bg-blue-600" : "bg-slate-300"
-        }`}
+        } ${loading ? "opacity-60 cursor-wait" : ""}`}
         title={enabled ? "Desactivar modelo" : "Activar modelo"}
       >
         <span
@@ -67,21 +76,32 @@ function ModelRow({ modelId, provider, enabled, healthy, detail, checked, onTogg
             </span>
           )}
         </div>
-        {!healthy && enabled && (
+        {error && enabled && (
+          <p className="text-xs text-red-600 mt-0.5">{error}</p>
+        )}
+        {!error && !healthy && enabled && (
           <p className="text-xs text-red-600 mt-0.5">{detail}</p>
         )}
       </div>
 
       {/* Indicador de estado */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className={`inline-block h-2.5 w-2.5 rounded-full ${indicatorColor}`} />
+        {loading && (
+          <svg className="h-3 w-3 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+        )}
+        {!loading && (
+          <span className={`inline-block h-2.5 w-2.5 rounded-full ${indicatorColor}`} />
+        )}
         <span className={`text-xs font-medium ${statusText}`}>
           {statusLabel}
         </span>
       </div>
 
       {/* Checkbox para incluir en experimento */}
-      {enabled && (
+      {enabled && !loading && (
         <input
           type="checkbox"
           checked={checked}
@@ -95,12 +115,15 @@ function ModelRow({ modelId, provider, enabled, healthy, detail, checked, onTogg
   );
 }
 
-export default function ExperimentForm({ modelsData, enabledModels, toggleModel, loading, error, onSubmit }) {
+export default function ExperimentForm({ modelsData, enabledModels, toggleModel, refreshModels, loading, error, onSubmit }) {
   const [pedido, setPedido] = useState("");
   const [sesgo, setSesgo] = useState("genero");
   const [selectedForExperiment, setSelectedForExperiment] = useState(() => new Set());
   const [mitigationAb, setMitigationAb] = useState(false);
   const [validationError, setValidationError] = useState(null);
+  const [modelErrors, setModelErrors] = useState({});
+  const [modelLoading, setModelLoading] = useState({});
+  const [retryTimeouts, setRetryTimeouts] = useState({});
 
   const buildModelsMap = () => {
     const map = {};
@@ -122,6 +145,70 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
   const modelsMap = buildModelsMap();
 
   const handleToggleModel = (modelId) => {
+    const isEnabling = !enabledModels.has(modelId);
+
+    if (isEnabling) {
+      setModelErrors((prev) => {
+        const next = { ...prev };
+        delete next[modelId];
+        return next;
+      });
+      setModelLoading((prev) => ({ ...prev, [modelId]: true }));
+
+      if (retryTimeouts[modelId]) {
+        clearTimeout(retryTimeouts[modelId]);
+        setRetryTimeouts((prev) => {
+          const next = { ...prev };
+          delete next[modelId];
+          return next;
+        });
+      }
+
+      refreshModels().then(() => {
+        setModelLoading((prev) => {
+          const next = { ...prev };
+          delete next[modelId];
+          return next;
+        });
+
+        const modelInfo = modelsMap[modelId];
+        if (modelInfo && !modelInfo.healthy) {
+          const isConnectionError = modelInfo.detail?.includes("falla de conexión") ||
+                                   modelInfo.detail?.includes("timeout") ||
+                                   modelInfo.detail?.includes("no responde");
+
+          if (isConnectionError && modelInfo.provider) {
+            const timeoutId = setTimeout(() => {
+              toggleModel(modelId);
+              setModelErrors((prev) => ({
+                ...prev,
+                [modelId]: modelInfo.detail
+              }));
+              setRetryTimeouts((prev) => {
+                const next = { ...prev };
+                delete next[modelId];
+                return next;
+              });
+            }, 10000);
+
+            setRetryTimeouts((prev) => ({
+              ...prev,
+              [modelId]: timeoutId
+            }));
+          }
+        }
+      });
+    } else {
+      if (retryTimeouts[modelId]) {
+        clearTimeout(retryTimeouts[modelId]);
+        setRetryTimeouts((prev) => {
+          const next = { ...prev };
+          delete next[modelId];
+          return next;
+        });
+      }
+    }
+
     toggleModel(modelId);
     if (enabledModels.has(modelId)) {
       setSelectedForExperiment((prev) => {
@@ -143,6 +230,12 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
       return next;
     });
   };
+
+  useEffect(() => {
+    return () => {
+      Object.values(retryTimeouts).forEach(timeout => clearTimeout(timeout));
+    };
+  }, [retryTimeouts]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -262,6 +355,8 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
                   healthy={m.healthy}
                   detail={m.detail}
                   checked={selectedForExperiment.has(m.id)}
+                  loading={modelLoading[m.id] || false}
+                  error={modelErrors[m.id] || null}
                   onToggleEnable={() => handleToggleModel(m.id)}
                   onToggleSelect={() => handleToggleSelect(m.id)}
                 />
@@ -285,6 +380,8 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
                     healthy={m.healthy}
                     detail={m.detail}
                     checked={selectedForExperiment.has(m.id)}
+                    loading={modelLoading[m.id] || false}
+                    error={modelErrors[m.id] || null}
                     onToggleEnable={() => handleToggleModel(m.id)}
                     onToggleSelect={() => handleToggleSelect(m.id)}
                   />

@@ -25,6 +25,7 @@ export default function Home({ exp }) {
           modelsData={exp.modelsData}
           enabledModels={exp.enabledModels}
           toggleModel={exp.toggleModel}
+          refreshModels={exp.refreshModels}
           loading={exp.loading}
           error={exp.error}
           onSubmit={handleSubmit}
