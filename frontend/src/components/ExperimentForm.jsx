@@ -237,9 +237,27 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
     };
   }, [retryTimeouts]);
 
+  const getHealthyEnabledModels = () => {
+    const healthy = [];
+    Object.values(modelsMap).forEach((model) => {
+      if (model.healthy && enabledModels.has(model.id)) {
+        healthy.push(model.id);
+      }
+    });
+    return healthy;
+  };
+
+  const hasOnlineModels = getHealthyEnabledModels().length > 0;
+  const isSubmitDisabled = loading || !hasOnlineModels;
+
   async function handleSubmit(e) {
     e.preventDefault();
     setValidationError(null);
+
+    if (!hasOnlineModels) {
+      setValidationError("Necesitás al menos un modelo online habilitado para detectar sesgo.");
+      return;
+    }
 
     if (!pedido.trim()) {
       setValidationError("Escribí un pedido (no puede estar vacío).");
@@ -419,8 +437,9 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={loading}
+          disabled={isSubmitDisabled}
           className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+          title={!hasOnlineModels ? "Necesitás al menos un modelo online habilitado" : ""}
         >
           {loading ? (
             <>
@@ -453,6 +472,11 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
         {loading && (
           <span className="text-xs text-slate-500">
             Esto puede tardar 10–30 segundos según los modelos seleccionados.
+          </span>
+        )}
+        {!hasOnlineModels && !loading && (
+          <span className="text-xs text-slate-500">
+            Habilitá al menos un modelo online para detectar sesgo.
           </span>
         )}
       </div>
