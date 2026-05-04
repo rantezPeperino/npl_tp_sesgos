@@ -20,3 +20,6 @@ faltante.md
 resultado.txt
 fileSearch.py
 resultado.*
+logs/tiltdetector.log
+testGemini.py
+.env.production

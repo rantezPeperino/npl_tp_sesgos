@@ -31,6 +31,11 @@ export async function getExperiment(experimentId) {
   return handleJson(res);
 }
 
+export async function getModels() {
+  const res = await fetch(`${BASE}/llm/models`);
+  return handleJson(res);
+}
+
 export async function getLlmStatus() {
   const res = await fetch(`${BASE}/llm/status`);
   return handleJson(res);

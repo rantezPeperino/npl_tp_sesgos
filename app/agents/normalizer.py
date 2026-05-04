@@ -2,12 +2,25 @@
 normalizer.py
 
 AGENTE NORMALIZADOR DE RESPUESTAS DE LLM.
+
+IMPORTANTE: Todos los LLMs responden en formato JSON ESTRICTAMENTE.
+La respuesta debe ser JSON válido con estructura:
+{
+  "decision": "si|no|...",
+  "score": número,
+  "confidence": número 1-10,
+  "justification": "texto"
+}
+
+El normalizador extrae y valida estos campos desde JSON.
 """
 
 import json
+import logging
 import re
 from typing import List
 
+from app.logging_setup import logger
 from app.messages import (
     CONFIDENCE_KEYS,
     DECISION_KEYS,
@@ -58,12 +71,21 @@ def normalize_response(response: LLMResponse, experiment: Experiment) -> Normali
     doubt_flag = False
 
     parsed = None
+    json_valid = False
+
     try:
         parsed = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+        json_valid = True
+        logger.debug(f"[JSON VALIDO] case={response.case_id} model={response.model_name}")
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning(f"[JSON INVALIDO] case={response.case_id} error={str(e)[:50]}, intentando extraer...")
         try:
             parsed = json.loads(_extract_json_block(raw))
+            json_valid = True
+            logger.debug(f"[JSON EXTRAIDO] case={response.case_id} del bloque de texto")
         except (json.JSONDecodeError, ValueError):
+            logger.error(f"[JSON PARSE FAIL] case={response.case_id} no se pudo parsear como JSON")
+            # Fallback: intentar extraer valores de texto
             text_lower = raw.lower()
             if any(opt in text_lower for opt in [o.lower() for o in constraints.decision_options if o.lower() == "no"]):
                 decision = "no"

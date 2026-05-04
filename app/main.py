@@ -7,6 +7,7 @@ Arranque: uvicorn app.main:app --reload
 
 import uvicorn
 
+from app import logging_setup
 from app.api.app import create_app
 
 app = create_app()
