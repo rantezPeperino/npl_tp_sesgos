@@ -157,9 +157,10 @@ choose_action() {
   esac
 }
 
-# ---- Modo no interactivo (argumento explícito) ----
+# ---- Main ----
+print_header
+
 if [[ $# -gt 0 ]]; then
-  print_header
   case "$1" in
     backend|back|be|1) run_backend_foreground ;;
     frontend|front|fe|2) run_frontend_foreground ;;
@@ -168,7 +169,7 @@ if [[ $# -gt 0 ]]; then
       cat <<EOF
 Uso: ./run.sh [backend|frontend|both]
 
-Sin argumentos abre un menú interactivo.
+Sin argumentos arranca backend + frontend automáticamente.
 
 Variables de entorno opcionales:
   BACKEND_HOST   (default: 0.0.0.0)
@@ -179,6 +180,5 @@ EOF
     *) err "Argumento desconocido: '$1'. Usá: ./run.sh --help"; exit 1 ;;
   esac
 else
-  print_header
-  choose_action
+  run_both
 fi

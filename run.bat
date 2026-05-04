@@ -206,7 +206,7 @@ REM ---- Main ----
 call :print_header
 
 if "%~1"=="" (
-  call :choose_action
+  call :run_both
   exit /b %errorlevel%
 )
 
@@ -236,7 +236,7 @@ exit /b 1
 echo.
 echo Uso: run.bat [backend^|frontend^|both]
 echo.
-echo Sin argumentos abre un menu interactivo.
+echo Sin argumentos arranca backend + frontend automaticamente.
 echo.
 echo Variables de entorno opcionales:
 echo   BACKEND_HOST   (default: 0.0.0.0)

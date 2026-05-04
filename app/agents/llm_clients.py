@@ -185,6 +185,45 @@ def _call_openrouter(prompt: str, temperature: float, call_id: str, model_id: st
             _log(f"[ISOLATION] call={call_id} provider=openrouter close-error={exc}")
 
 
+def _call_deepseek(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
+    from app import config
+    if not config.DEEPSEEK_API_KEY:
+        raise ValueError("DEEPSEEK_API_KEY no configurada")
+    from openai import OpenAI  # type: ignore
+    client = OpenAI(
+        api_key=config.DEEPSEEK_API_KEY,
+        base_url="https://api.deepseek.com",
+    )
+    _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=deepseek (cliente nuevo)")
+    try:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        kwargs = {
+            "model": model_id,
+            "messages": messages,
+        }
+        if temperature != 1.0:
+            kwargs["temperature"] = temperature
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if "temperature" in str(exc):
+                _log(f"[LLM] call={call_id} model={model_id} no soporta temperature={temperature}, reintentando sin temperature")
+                kwargs.pop("temperature", None)
+                response = client.chat.completions.create(**kwargs)
+            else:
+                raise
+        return response.choices[0].message.content or ""
+    finally:
+        try:
+            client.close()
+            _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=deepseek (cliente cerrado)")
+        except Exception as exc:
+            _log(f"[ISOLATION] call={call_id} provider=deepseek close-error={exc}")
+
+
 def _call_ollama(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
     """
     Llama a Ollama vía HTTP nativo. Garantías de aislamiento:
@@ -234,6 +273,7 @@ _PROVIDERS_CALL = {
     "gemini": _call_gemini,
     "anthropic": _call_anthropic,
     "openrouter": _call_openrouter,
+    "deepseek": _call_deepseek,
 }
 
 
@@ -251,6 +291,8 @@ def _resolve_target(provider: str) -> str:
         return "api.anthropic.com"
     if provider == "openrouter":
         return "openrouter.ai"
+    if provider == "deepseek":
+        return "api.deepseek.com"
     return "?"
 
 

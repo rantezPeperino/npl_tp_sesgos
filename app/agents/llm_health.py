@@ -50,7 +50,8 @@ def _check_gemini(model_id: str) -> Tuple[bool, str]:
         return False, f"SDK no instalado ({exc}). Instalá: pip install google-generativeai"
     try:
         genai.configure(api_key=config.GEMINI_API_KEY)
-        next(iter(genai.list_models()))
+        model = genai.GenerativeModel(model_id)
+        response = model.generate_content("ping", generation_config={"temperature": 0.2})
         return True, "ok"
     except Exception as exc:
         return False, f"falla de conexión: {str(exc)[:100]}"
@@ -86,6 +87,24 @@ def _check_openrouter(model_id: str) -> Tuple[bool, str]:
         client = OpenAI(
             api_key=config.OPENROUTER_API_KEY,
             base_url=config.OPENROUTER_BASE_URL,
+        )
+        list(client.models.list())[:1]
+        return True, "ok"
+    except Exception as exc:
+        return False, f"falla de conexión: {str(exc)[:100]}"
+
+
+def _check_deepseek(model_id: str) -> Tuple[bool, str]:
+    if not config.DEEPSEEK_API_KEY:
+        return False, "DEEPSEEK_API_KEY no configurada"
+    try:
+        from openai import OpenAI  # type: ignore
+    except ImportError as exc:
+        return False, f"SDK no instalado ({exc}). Instalá: pip install openai"
+    try:
+        client = OpenAI(
+            api_key=config.DEEPSEEK_API_KEY,
+            base_url="https://api.deepseek.com",
         )
         list(client.models.list())[:1]
         return True, "ok"
@@ -154,7 +173,11 @@ _PROVIDER_CHECKS = {
     "ollama": _check_ollama,
     "anthropic": _check_anthropic,
     "openrouter": _check_openrouter,
+    "deepseek": _check_deepseek,
 }
+
+
+_SUPPORTED_PROVIDERS = {"ollama", "openai", "anthropic", "gemini", "openrouter", "deepseek"}
 
 
 def get_models_health() -> Dict[str, Any]:
@@ -232,6 +255,35 @@ def get_models_health() -> Dict[str, Any]:
                 "healthy": ok,
                 "detail": detail,
             })
+
+    if config.DEEPSEEK_API_KEY:
+        for model_id in config.REMOTE_MODELS_DEEPSEEK:
+            ok, detail = _check_deepseek(model_id)
+            if "deepseek" not in result["remote"]:
+                result["remote"]["deepseek"] = []
+            result["remote"]["deepseek"].append({
+                "id": model_id,
+                "healthy": ok,
+                "detail": detail,
+            })
+
+    # Validar que no haya modelos configurados sin proveedor implementado
+    all_configured = (
+        config.LOCAL_MODELS +
+        config.REMOTE_MODELS_OPENAI +
+        config.REMOTE_MODELS_ANTHROPIC +
+        config.REMOTE_MODELS_GEMINI +
+        config.REMOTE_MODELS_OPENROUTER +
+        config.REMOTE_MODELS_DEEPSEEK
+    )
+
+    for model in all_configured:
+        try:
+            provider = providers.resolve_provider(model)
+            if provider not in _SUPPORTED_PROVIDERS:
+                _print_warn(f"Proveedor '{provider}' para modelo '{model}' NO ESTÁ IMPLEMENTADO")
+        except ValueError:
+            _print_warn(f"Modelo '{model}' no encontrado en configuración")
 
     return result
 

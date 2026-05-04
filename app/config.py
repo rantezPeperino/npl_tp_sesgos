@@ -18,6 +18,7 @@ OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
 
 # Modelos locales (implícitamente Ollama)
 _raw_local = os.getenv("LOCAL_MODELS", "")
@@ -36,6 +37,9 @@ REMOTE_MODELS_GEMINI: List[str] = [m.strip() for m in _raw_remote_gemini.split("
 _raw_remote_openrouter = os.getenv("REMOTE_MODELS_OPENROUTER", "")
 REMOTE_MODELS_OPENROUTER: List[str] = [m.strip() for m in _raw_remote_openrouter.split(",") if m.strip()]
 
+_raw_remote_deepseek = os.getenv("REMOTE_MODELS_DEEPSEEK", "")
+REMOTE_MODELS_DEEPSEEK: List[str] = [m.strip() for m in _raw_remote_deepseek.split(",") if m.strip()]
+
 # Mapeo dinámico de modelo_id → proveedor
 def get_provider_for_model(model_id: str) -> str:
     """Devuelve el proveedor ('ollama', 'openai', etc.) para un model_id dado."""
@@ -49,6 +53,8 @@ def get_provider_for_model(model_id: str) -> str:
         return "gemini"
     if model_id in REMOTE_MODELS_OPENROUTER:
         return "openrouter"
+    if model_id in REMOTE_MODELS_DEEPSEEK:
+        return "deepseek"
     # Fallback: si contiene '/', probablemente sea openrouter
     if "/" in model_id:
         return "openrouter"
