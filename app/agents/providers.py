@@ -1,57 +1,27 @@
 """
 providers.py
 
-REGISTRO CENTRAL DE PROVEEDORES LLM.
-Punto único para mapear model_name (lo que llega por API) → provider real.
+RESOLUCIÓN DINÁMICA DE PROVEEDORES.
+Mapea model_id (como llega por API) → provider real consultando la config.
 
-Para AGREGAR un nuevo proveedor:
-  1. Sumá los aliases en PROVIDER_ALIASES.
-  2. Implementá la función de call en app/llm_clients.py y registrala en _PROVIDERS_CALL.
-  3. Implementá el health check en app/llm_health.py y registralo en _PROVIDER_CHECKS.
-  4. Sumá las env vars necesarias a app/config.py.
+Los modelos se declaran en .env con:
+  LOCAL_MODELS=llama3.3:70b,deepseek-r1:32b,...
+  REMOTE_MODELS_OPENAI=gpt-4o-mini,gpt-4-turbo,...
+  REMOTE_MODELS_ANTHROPIC=...
+  REMOTE_MODELS_GEMINI=...
+  REMOTE_MODELS_OPENROUTER=...
 
-Para HABILITAR / DESHABILITAR un proveedor:
-  Editá ENABLED_PROVIDERS en .env (lista separada por comas).
-
-Para SELECCIONAR el modelo a usar dentro del proveedor:
-  Editá la variable de entorno correspondiente (OPENAI_MODEL, GEMINI_MODEL,
-  OLLAMA_MODEL).
+resolve_provider(model_id) busca en las listas de config y devuelve el provider.
 """
 
-from typing import Dict
 
-
-PROVIDER_ALIASES: Dict[str, str] = {
-    "ollama": "ollama",
-    "llama": "ollama",
-    "llama3": "ollama",
-    "local": "ollama",
-    "openai": "openai",
-    "chatgpt": "openai",
-    "gpt": "openai",
-    "gemini": "gemini",
-    "google": "gemini",
-    "claude": "anthropic",
-    "anthropic": "anthropic",
-    "openrouter": "openrouter",
-    "or": "openrouter",
-}
-
-
-def resolve_provider(model_name: str) -> str:
-    raw = model_name.lower().strip()
-    # Soporte para sintaxis "provider:model" (ej: "openrouter:openai/gpt-4o-mini").
-    if ":" in raw:
-        prefix = raw.split(":", 1)[0]
-        if prefix in PROVIDER_ALIASES:
-            return PROVIDER_ALIASES[prefix]
-    key = raw.split("-")[0]
-    if key not in PROVIDER_ALIASES:
-        raise ValueError(
-            f"Modelo no soportado: '{model_name}'. "
-            f"Aliases válidos: {sorted(PROVIDER_ALIASES.keys())}"
-        )
-    return PROVIDER_ALIASES[key]
+def resolve_provider(model_id: str) -> str:
+    """
+    Resuelve el proveedor para un model_id concreto.
+    Consulta las listas declaradas en config.
+    """
+    from app import config
+    return config.get_provider_for_model(model_id)
 
 
 def extract_subkey(model_name: str) -> str:

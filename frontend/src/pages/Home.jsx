@@ -22,7 +22,9 @@ export default function Home({ exp }) {
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <ExperimentForm
-          llmStatus={exp.llmStatus}
+          modelsData={exp.modelsData}
+          enabledModels={exp.enabledModels}
+          toggleModel={exp.toggleModel}
           loading={exp.loading}
           error={exp.error}
           onSubmit={handleSubmit}

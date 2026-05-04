@@ -76,6 +76,17 @@ run_frontend_foreground() {
   exec npm run dev -- --port "$FRONTEND_PORT"
 }
 
+open_browser() {
+  local url="$1"
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url" >/dev/null 2>&1 &
+  elif command -v open >/dev/null 2>&1; then
+    open "$url" >/dev/null 2>&1 &
+  elif command -v start >/dev/null 2>&1; then
+    start "$url" >/dev/null 2>&1 &
+  fi
+}
+
 run_both() {
   ensure_backend_ready
   ensure_frontend_ready
@@ -108,6 +119,11 @@ run_both() {
     ok "Listo."
   }
   trap cleanup INT TERM EXIT
+
+  # Esperar a que el frontend esté listo y abrir el browser
+  sleep 3
+  open_browser "http://localhost:${FRONTEND_PORT}"
+  ok "Browser abierto en http://localhost:${FRONTEND_PORT}"
 
   wait -n "$BACK_PID" "$FRONT_PID" || true
   cleanup

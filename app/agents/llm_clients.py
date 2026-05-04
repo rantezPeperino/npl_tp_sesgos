@@ -39,7 +39,7 @@ def _new_call_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _call_openai(prompt: str, temperature: float, call_id: str, system_prompt: str = "") -> str:
+def _call_openai(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
     from app import config
     if not config.OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY no configurada")
@@ -52,7 +52,7 @@ def _call_openai(prompt: str, temperature: float, call_id: str, system_prompt: s
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         kwargs = {
-            "model": config.OPENAI_MODEL,
+            "model": model_id,
             "messages": messages,
         }
         if temperature != 1.0:
@@ -61,7 +61,7 @@ def _call_openai(prompt: str, temperature: float, call_id: str, system_prompt: s
             response = client.chat.completions.create(**kwargs)
         except Exception as exc:
             if "temperature" in str(exc):
-                _log(f"[LLM] call={call_id} model={config.OPENAI_MODEL} no soporta temperature={temperature}, reintentando sin temperature")
+                _log(f"[LLM] call={call_id} model={model_id} no soporta temperature={temperature}, reintentando sin temperature")
                 kwargs.pop("temperature", None)
                 response = client.chat.completions.create(**kwargs)
             else:
@@ -75,7 +75,7 @@ def _call_openai(prompt: str, temperature: float, call_id: str, system_prompt: s
             _log(f"[ISOLATION] call={call_id} provider=openai close-error={exc}")
 
 
-def _call_anthropic(prompt: str, temperature: float, call_id: str, system_prompt: str = "") -> str:
+def _call_anthropic(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
     from app import config
     if not config.ANTHROPIC_API_KEY:
         raise ValueError("ANTHROPIC_API_KEY no configurada")
@@ -84,7 +84,7 @@ def _call_anthropic(prompt: str, temperature: float, call_id: str, system_prompt
     _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=anthropic (cliente nuevo)")
     try:
         create_kwargs = {
-            "model": config.ANTHROPIC_MODEL,
+            "model": model_id,
             "max_tokens": 512,
             "temperature": temperature,
             "messages": [{"role": "user", "content": prompt}],
@@ -101,16 +101,16 @@ def _call_anthropic(prompt: str, temperature: float, call_id: str, system_prompt
             _log(f"[ISOLATION] call={call_id} provider=anthropic close-error={exc}")
 
 
-def _call_gemini(prompt: str, temperature: float, call_id: str, system_prompt: str = "") -> str:
+def _call_gemini(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
     from app import config
     if not config.GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY no configurada")
     import google.generativeai as genai  # type: ignore
     genai.configure(api_key=config.GEMINI_API_KEY)
     if system_prompt:
-        model = genai.GenerativeModel(config.GEMINI_MODEL, system_instruction=system_prompt)
+        model = genai.GenerativeModel(model_id, system_instruction=system_prompt)
     else:
-        model = genai.GenerativeModel(config.GEMINI_MODEL)
+        model = genai.GenerativeModel(model_id)
     _log(f"[ISOLATION] call={call_id} client_id={id(model):x} provider=gemini (modelo nuevo)")
     try:
         response = model.generate_content(
@@ -123,7 +123,46 @@ def _call_gemini(prompt: str, temperature: float, call_id: str, system_prompt: s
         _log(f"[ISOLATION] call={call_id} provider=gemini (modelo descartado)")
 
 
-def _call_ollama(prompt: str, temperature: float, call_id: str, system_prompt: str = "") -> str:
+def _call_openrouter(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
+    from app import config
+    if not config.OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY no configurada")
+    from openai import OpenAI  # type: ignore
+    client = OpenAI(
+        base_url=config.OPENROUTER_BASE_URL,
+        api_key=config.OPENROUTER_API_KEY,
+    )
+    _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=openrouter (cliente nuevo)")
+    try:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        kwargs = {
+            "model": model_id,
+            "messages": messages,
+        }
+        if temperature != 1.0:
+            kwargs["temperature"] = temperature
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if "temperature" in str(exc):
+                _log(f"[LLM] call={call_id} model={model_id} no soporta temperature={temperature}, reintentando sin temperature")
+                kwargs.pop("temperature", None)
+                response = client.chat.completions.create(**kwargs)
+            else:
+                raise
+        return response.choices[0].message.content or ""
+    finally:
+        try:
+            client.close()
+            _log(f"[ISOLATION] call={call_id} client_id={id(client):x} provider=openrouter (cliente cerrado)")
+        except Exception as exc:
+            _log(f"[ISOLATION] call={call_id} provider=openrouter close-error={exc}")
+
+
+def _call_ollama(prompt: str, temperature: float, call_id: str, model_id: str, system_prompt: str = "") -> str:
     """
     Llama a Ollama vía HTTP nativo. Garantías de aislamiento:
     - `context: []` explícito → no reusa KV cache de llamadas anteriores
@@ -135,7 +174,7 @@ def _call_ollama(prompt: str, temperature: float, call_id: str, system_prompt: s
     import urllib.request
 
     payload = {
-        "model": config.OLLAMA_MODEL,
+        "model": model_id,
         "prompt": prompt,
         "stream": False,
         "options": {"temperature": temperature},
@@ -175,19 +214,6 @@ _PROVIDERS_CALL = {
 }
 
 
-def _resolve_model_id(provider: str, model_name: str = "") -> str:
-    from app import config
-    if provider == "ollama":
-        return config.OLLAMA_MODEL
-    if provider == "openai":
-        return config.OPENAI_MODEL
-    if provider == "gemini":
-        return config.GEMINI_MODEL
-    if provider == "anthropic":
-        return config.ANTHROPIC_MODEL
-    if provider == "openrouter":
-        return providers.extract_subkey(model_name) or config.OPENROUTER_MODEL
-    return "?"
 
 
 def _resolve_target(provider: str) -> str:
@@ -209,11 +235,6 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
     from app import config
 
     provider = providers.resolve_provider(model_name)
-    if provider not in config.ENABLED_PROVIDERS:
-        raise ValueError(
-            f"Proveedor '{provider}' no está habilitado. "
-            f"Habilitalo en ENABLED_PROVIDERS del .env."
-        )
 
     call_fn = _PROVIDERS_CALL.get(provider)
     if call_fn is None:
@@ -224,18 +245,17 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
     call_id = _new_call_id()
     prompt_hash = _short_hash(prompt)
 
-    model_id = _resolve_model_id(provider, model_name)
     target = _resolve_target(provider)
 
     _log(
-        f"[LLM CALL] call={call_id} provider={provider} model={model_id} "
+        f"[LLM CALL] call={call_id} provider={provider} model={model_name} "
         f"target={target} case={case.case_id} prompt_sha={prompt_hash} prompt_len={len(prompt)}"
     )
     t0 = time.monotonic()
-    raw = call_fn(prompt, temperature, call_id, system_prompt)
+    raw = call_fn(prompt, temperature, call_id, model_name, system_prompt)
     elapsed = time.monotonic() - t0
     _log(
-        f"[LLM RESP] call={call_id} provider={provider} model={model_id} "
+        f"[LLM RESP] call={call_id} provider={provider} model={model_name} "
         f"elapsed={elapsed:.2f}s chars={len(raw)} resp_sha={_short_hash(raw)} case={case.case_id}"
     )
     return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw)

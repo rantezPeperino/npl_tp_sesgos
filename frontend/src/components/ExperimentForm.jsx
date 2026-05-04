@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { fetchRandomExample } from "../api/tiltApi";
 
 const SESGO_OPTIONS = [
@@ -12,47 +12,137 @@ const SESGO_OPTIONS = [
   "nivel_socioeconomico",
 ];
 
-const ALL_PROVIDERS = ["ollama", "openai", "gemini", "anthropic", "openrouter"];
+function ModelRow({ modelId, provider, enabled, healthy, detail, checked, onToggleEnable, onToggleSelect }) {
+  const statusBg = !enabled
+    ? "bg-slate-100"
+    : healthy
+    ? "bg-green-50"
+    : "bg-red-50";
 
-const DEFAULT_OPENROUTER_MODELS = [
-  "openai/gpt-4o-mini",
-  "anthropic/claude-haiku-4.5",
-  "meta-llama/llama-3.3-70b-instruct",
-];
+  const statusText = !enabled
+    ? "text-slate-500"
+    : healthy
+    ? "text-green-700"
+    : "text-red-700";
 
-export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) {
+  const indicatorColor = !enabled
+    ? "bg-slate-400"
+    : healthy
+    ? "bg-green-500"
+    : "bg-red-500";
+
+  const statusLabel = !enabled
+    ? "deshabilitado"
+    : healthy
+    ? "online"
+    : "offline";
+
+  return (
+    <div className={`flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 transition ${statusBg}`}>
+      {/* Toggle habilitar/deshabilitar */}
+      <button
+        type="button"
+        onClick={onToggleEnable}
+        className={`flex-shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          enabled ? "bg-blue-600" : "bg-slate-300"
+        }`}
+        title={enabled ? "Desactivar modelo" : "Activar modelo"}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            enabled ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
+
+      {/* Nombre del modelo + proveedor */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-medium ${statusText}`}>
+            {modelId}
+          </span>
+          {provider && provider !== "ollama" && (
+            <span className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600 capitalize">
+              {provider}
+            </span>
+          )}
+        </div>
+        {!healthy && enabled && (
+          <p className="text-xs text-red-600 mt-0.5">{detail}</p>
+        )}
+      </div>
+
+      {/* Indicador de estado */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className={`inline-block h-2.5 w-2.5 rounded-full ${indicatorColor}`} />
+        <span className={`text-xs font-medium ${statusText}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Checkbox para incluir en experimento */}
+      {enabled && (
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onToggleSelect}
+          disabled={!healthy}
+          className="flex-shrink-0 h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
+          title={healthy ? "Incluir en experimento" : "Modelo no disponible"}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function ExperimentForm({ modelsData, enabledModels, toggleModel, loading, error, onSubmit }) {
   const [pedido, setPedido] = useState("");
   const [sesgo, setSesgo] = useState("genero");
-  const [selectedModels, setSelectedModels] = useState(() => new Set());
+  const [selectedForExperiment, setSelectedForExperiment] = useState(() => new Set());
   const [mitigationAb, setMitigationAb] = useState(false);
   const [validationError, setValidationError] = useState(null);
 
-  const providerHealth = useMemo(() => {
+  const buildModelsMap = () => {
     const map = {};
-    for (const c of llmStatus?.checks || []) {
-      map[c.provider] = c;
+    if (modelsData?.local) {
+      for (const m of modelsData.local) {
+        map[m.id] = m;
+      }
+    }
+    if (modelsData?.remote) {
+      for (const [provider, models] of Object.entries(modelsData.remote)) {
+        for (const m of models) {
+          map[m.id] = { ...m, provider };
+        }
+      }
     }
     return map;
-  }, [llmStatus]);
+  };
 
-  useEffect(() => {
-    if (!llmStatus) return;
-    const healthy = (llmStatus.checks || [])
-      .filter((c) => c.healthy)
-      .map((c) => c.provider);
-    if (selectedModels.size === 0 && healthy.length > 0) {
-      setSelectedModels(new Set(healthy));
+  const modelsMap = buildModelsMap();
+
+  const handleToggleModel = (modelId) => {
+    toggleModel(modelId);
+    if (enabledModels.has(modelId)) {
+      setSelectedForExperiment((prev) => {
+        const next = new Set(prev);
+        next.delete(modelId);
+        return next;
+      });
     }
-  }, [llmStatus]);
+  };
 
-  function toggleModel(name) {
-    setSelectedModels((prev) => {
+  const handleToggleSelect = (modelId) => {
+    setSelectedForExperiment((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(modelId)) {
+        next.delete(modelId);
+      } else {
+        next.add(modelId);
+      }
       return next;
     });
-  }
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -66,22 +156,18 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
       setValidationError("Seleccioná una dimensión de sesgo.");
       return;
     }
-    const baseModels = Array.from(selectedModels).filter((m) => m !== "openrouter");
-    const openrouterSlugs = selectedModels.has("openrouter")
-      ? openrouterModels
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((s) => `openrouter:${s}`)
-      : [];
-    const finalModels = [...baseModels, ...openrouterSlugs];
-
-    if (finalModels.length === 0) {
+    if (selectedForExperiment.size === 0) {
       setValidationError("Seleccioná al menos un modelo.");
       return;
     }
-    if (selectedModels.has("openrouter") && openrouterSlugs.length === 0) {
-      setValidationError("OpenRouter está seleccionado pero no hay modelos en la lista.");
+
+    const finalModels = Array.from(selectedForExperiment).filter((modelId) => {
+      const info = modelsMap[modelId];
+      return info?.healthy && enabledModels.has(modelId);
+    });
+
+    if (finalModels.length === 0) {
+      setValidationError("No hay modelos disponibles seleccionados.");
       return;
     }
 
@@ -89,11 +175,11 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
       await onSubmit({
         pedido: pedido.trim(),
         sesgo_medir: sesgo,
-        model_names: Array.from(selectedModels),
+        model_names: finalModels,
         mitigation_ab: mitigationAb,
       });
     } catch {
-      // el error se propaga vía hook.error
+      // error se propaga vía hook
     }
   }
 
@@ -160,48 +246,52 @@ export default function ExperimentForm({ llmStatus, loading, error, onSubmit }) 
       </div>
 
       <div>
-        <span className="mb-2 block text-sm font-medium text-slate-800">Modelos a evaluar</span>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {ALL_PROVIDERS.map((p) => {
-            const health = providerHealth[p];
-            const healthy = !!health?.healthy;
-            const detail = health?.detail || "Estado desconocido";
-            const checked = selectedModels.has(p);
-            return (
-              <label
-                key={p}
-                title={!healthy ? detail : "healthy"}
-                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-sm transition ${
-                  !healthy
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
-                    : checked
-                    ? "border-blue-500 bg-blue-50 text-blue-800"
-                    : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  disabled={!healthy}
-                  checked={checked}
-                  onChange={() => toggleModel(p)}
-                  aria-label={`Modelo ${p}`}
+        <span className="mb-3 block text-sm font-medium text-slate-800">Modelos a evaluar</span>
+
+        {/* Modelos locales */}
+        {modelsData?.local && modelsData.local.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-700 mb-2 uppercase">Local</h3>
+            <div className="space-y-2">
+              {modelsData.local.map((m) => (
+                <ModelRow
+                  key={m.id}
+                  modelId={m.id}
+                  provider={m.provider}
+                  enabled={enabledModels.has(m.id)}
+                  healthy={m.healthy}
+                  detail={m.detail}
+                  checked={selectedForExperiment.has(m.id)}
+                  onToggleEnable={() => handleToggleModel(m.id)}
+                  onToggleSelect={() => handleToggleSelect(m.id)}
                 />
-                <span className="capitalize">{p}</span>
-                <span
-                  aria-hidden
-                  className={`ml-auto inline-block h-2 w-2 rounded-full ${
-                    healthy ? "bg-emerald-500" : "bg-red-500"
-                  }`}
-                />
-              </label>
-            );
-          })}
-        </div>
-        {llmStatus?.enabled_providers && (
-          <p className="mt-1 text-xs text-slate-500">
-            Habilitados en backend: {llmStatus.enabled_providers.join(", ") || "ninguno"}
-          </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modelos remotos */}
+        {modelsData?.remote && Object.keys(modelsData.remote).length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-700 mb-2 uppercase">Remoto</h3>
+            <div className="space-y-2">
+              {Object.entries(modelsData.remote).flatMap(([provider, models]) =>
+                models.map((m) => (
+                  <ModelRow
+                    key={m.id}
+                    modelId={m.id}
+                    provider={provider}
+                    enabled={enabledModels.has(m.id)}
+                    healthy={m.healthy}
+                    detail={m.detail}
+                    checked={selectedForExperiment.has(m.id)}
+                    onToggleEnable={() => handleToggleModel(m.id)}
+                    onToggleSelect={() => handleToggleSelect(m.id)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         )}
       </div>
 
