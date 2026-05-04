@@ -160,6 +160,7 @@ _PROVIDER_CHECKS = {
 def get_models_health() -> Dict[str, Any]:
     """
     Devuelve el health status de todos los modelos configurados.
+    Solo incluye modelos remotos si tienen API key configurada.
     Estructura:
     {
       "local": [
@@ -168,7 +169,7 @@ def get_models_health() -> Dict[str, Any]:
       ],
       "remote": {
         "openai": [
-          {"id": "gpt-4o-mini", "healthy": false, "detail": "OPENAI_API_KEY no configurada"},
+          {"id": "gpt-4o-mini", "healthy": false, "detail": "..."},
           ...
         ],
         ...
@@ -187,46 +188,50 @@ def get_models_health() -> Dict[str, Any]:
             "detail": detail,
         })
 
-    # Health check para modelos remotos por proveedor
-    for model_id in config.REMOTE_MODELS_OPENAI:
-        ok, detail = _check_openai(model_id)
-        if "openai" not in result["remote"]:
-            result["remote"]["openai"] = []
-        result["remote"]["openai"].append({
-            "id": model_id,
-            "healthy": ok,
-            "detail": detail,
-        })
+    # Health check para modelos remotos (solo si tienen API key)
+    if config.OPENAI_API_KEY:
+        for model_id in config.REMOTE_MODELS_OPENAI:
+            ok, detail = _check_openai(model_id)
+            if "openai" not in result["remote"]:
+                result["remote"]["openai"] = []
+            result["remote"]["openai"].append({
+                "id": model_id,
+                "healthy": ok,
+                "detail": detail,
+            })
 
-    for model_id in config.REMOTE_MODELS_ANTHROPIC:
-        ok, detail = _check_anthropic(model_id)
-        if "anthropic" not in result["remote"]:
-            result["remote"]["anthropic"] = []
-        result["remote"]["anthropic"].append({
-            "id": model_id,
-            "healthy": ok,
-            "detail": detail,
-        })
+    if config.ANTHROPIC_API_KEY:
+        for model_id in config.REMOTE_MODELS_ANTHROPIC:
+            ok, detail = _check_anthropic(model_id)
+            if "anthropic" not in result["remote"]:
+                result["remote"]["anthropic"] = []
+            result["remote"]["anthropic"].append({
+                "id": model_id,
+                "healthy": ok,
+                "detail": detail,
+            })
 
-    for model_id in config.REMOTE_MODELS_GEMINI:
-        ok, detail = _check_gemini(model_id)
-        if "gemini" not in result["remote"]:
-            result["remote"]["gemini"] = []
-        result["remote"]["gemini"].append({
-            "id": model_id,
-            "healthy": ok,
-            "detail": detail,
-        })
+    if config.GEMINI_API_KEY:
+        for model_id in config.REMOTE_MODELS_GEMINI:
+            ok, detail = _check_gemini(model_id)
+            if "gemini" not in result["remote"]:
+                result["remote"]["gemini"] = []
+            result["remote"]["gemini"].append({
+                "id": model_id,
+                "healthy": ok,
+                "detail": detail,
+            })
 
-    for model_id in config.REMOTE_MODELS_OPENROUTER:
-        ok, detail = _check_openrouter(model_id)
-        if "openrouter" not in result["remote"]:
-            result["remote"]["openrouter"] = []
-        result["remote"]["openrouter"].append({
-            "id": model_id,
-            "healthy": ok,
-            "detail": detail,
-        })
+    if config.OPENROUTER_API_KEY:
+        for model_id in config.REMOTE_MODELS_OPENROUTER:
+            ok, detail = _check_openrouter(model_id)
+            if "openrouter" not in result["remote"]:
+                result["remote"]["openrouter"] = []
+            result["remote"]["openrouter"].append({
+                "id": model_id,
+                "healthy": ok,
+                "detail": detail,
+            })
 
     return result
 
