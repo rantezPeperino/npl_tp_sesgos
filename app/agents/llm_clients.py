@@ -17,12 +17,14 @@ Para agregar un proveedor: ver app/agents/providers.py.
 
 import hashlib
 import json
+import logging
 import sys
 import time
 import uuid
 from typing import List
 
 from app.agents import providers
+from app.logging_setup import logger
 from app.messages import build_prompt_for_case
 from app.models import Case, Experiment, LLMResponse
 
@@ -251,6 +253,12 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
         f"[LLM CALL] call={call_id} provider={provider} model={model_name} "
         f"target={target} case={case.case_id} prompt_sha={prompt_hash} prompt_len={len(prompt)}"
     )
+
+    logger.info(f"[LLM CALL] case={case.case_id} model={model_name} provider={provider}")
+    logger.debug(f"[PROMPT ENVIADO] case={case.case_id}\n{prompt}")
+    if system_prompt:
+        logger.debug(f"[SYSTEM PROMPT] case={case.case_id}\n{system_prompt}")
+
     t0 = time.monotonic()
     raw = call_fn(prompt, temperature, call_id, model_name, system_prompt)
     elapsed = time.monotonic() - t0
@@ -258,7 +266,11 @@ def execute_case_on_model(case: Case, experiment: Experiment, model_name: str, s
         f"[LLM RESP] call={call_id} provider={provider} model={model_name} "
         f"elapsed={elapsed:.2f}s chars={len(raw)} resp_sha={_short_hash(raw)} case={case.case_id}"
     )
-    return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw)
+
+    logger.info(f"[LLM RESP] case={case.case_id} model={model_name} elapsed={elapsed:.2f}s")
+    logger.debug(f"[RESPUESTA CRUDA] case={case.case_id}\n{raw}")
+
+    return LLMResponse(model_name=model_name, case_id=case.case_id, raw_response=raw, prompt_sent=prompt)
 
 
 def execute_cases_on_models(

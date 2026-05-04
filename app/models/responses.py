@@ -17,6 +17,7 @@ class LLMResponse:
     model_name: str
     case_id: str
     raw_response: str
+    prompt_sent: str = ""
     error: Optional[str] = None
 
 
@@ -48,6 +49,7 @@ class CaseOutput:
     score: float
     doubt_flag: bool
     justification: str
+    prompt_sent: str = ""
     confidence: float = 5.0
     bias_detected: bool = False
     bias_category: Optional[str] = None

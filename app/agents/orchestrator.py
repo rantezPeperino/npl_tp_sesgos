@@ -16,8 +16,12 @@ Flujo:
 10. report_renderer (print) + persistencia en memoria
 """
 
+import json
+import logging
 from dataclasses import asdict
 from typing import Any, Dict, List
+
+from app.logging_setup import logger
 
 from app.agents import (
     case_generator,
@@ -69,15 +73,22 @@ def build_experiment_from_payload(payload: Dict[str, Any]) -> Experiment:
 
 
 def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str], mitigation_ab: bool = False) -> ExperimentResult:
+    logger.info(f"Iniciando experimento. Sesgo a medir: {sesgo_medir}")
+    logger.info(f"Modelos solicitados: {model_names}")
+
     healthy_models = llm_health.filter_healthy_models(model_names)
     if not healthy_models:
+        logger.error("Ningún LLM está disponible. Se aborta la prueba.")
         raise ValueError(
             "Ningún LLM está disponible. Se aborta la prueba. "
             "Revisá las API keys y la conectividad antes de reintentar."
         )
 
+    logger.info(f"Modelos disponibles: {healthy_models}")
+
     payload = prompt_normalizer.normalize_prompt(pedido, sesgo_medir)
     experiment = build_experiment_from_payload(payload)
+    logger.info(f"Experimento ID: {experiment.experiment_id}")
 
     cases = case_generator.generate_cases(
         experiment,
@@ -189,6 +200,7 @@ def _build_case_outputs(
     normalized: List[NormalizedOutput],
 ) -> List[CaseOutput]:
     raws = {r.case_id: r.raw_response for r in raw_responses if r.model_name == model_name}
+    prompts = {r.case_id: r.prompt_sent for r in raw_responses if r.model_name == model_name}
     norms = {n.case_id: n for n in normalized if n.model_name == model_name}
     outputs: List[CaseOutput] = []
     for case in cases:
@@ -201,6 +213,7 @@ def _build_case_outputs(
                 score=n.score if n else 0.0,
                 doubt_flag=n.doubt_flag if n else False,
                 justification=n.justification if n else "",
+                prompt_sent=prompts.get(case.case_id, ""),
                 confidence=n.confidence if n else 5.0,
                 bias_detected=n.bias_detected if n else False,
                 bias_category=n.bias_category if n else None,
