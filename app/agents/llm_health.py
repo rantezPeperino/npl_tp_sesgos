@@ -13,7 +13,6 @@ Cada modelo incluye: id, provider, healthy, detail
 """
 
 import json
-import subprocess
 import sys
 import urllib.request
 from typing import Any, Dict, List, Tuple
@@ -129,42 +128,9 @@ def _check_ollama(model_id: str) -> Tuple[bool, str]:
     if not any(m == model_id or m.startswith(f"{model_id}:") for m in available):
         return False, f"modelo '{model_id}' no descargado"
 
-    # Verificar que el modelo esté CORRIENDO (via ollama ps)
-    try:
-        result = subprocess.run(
-            ["ollama", "ps"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            return False, "ollama ps fallo"
-
-        # Parsear output: primera línea es header, resto son modelos
-        lines = result.stdout.strip().split("\n")
-        if len(lines) <= 1:
-            # Solo header o vacío → ningún modelo corriendo
-            return False, "modelo no está corriendo"
-
-        # Extraer nombres de modelos en ejecución (primer campo de cada línea)
-        running = []
-        for line in lines[1:]:
-            parts = line.split()
-            if parts:
-                running.append(parts[0])
-
-        # Verificar si nuestro model_id está en la lista de corriendo
-        if model_id in running or any(m.startswith(f"{model_id}:") for m in running):
-            return True, "corriendo"
-        else:
-            return False, "modelo no está corriendo"
-
-    except subprocess.TimeoutExpired:
-        return False, "ollama ps timeout"
-    except FileNotFoundError:
-        return False, "ollama no instalado"
-    except Exception as exc:
-        return False, f"error al verificar: {str(exc)[:50]}"
+    # Ollama carga el modelo automáticamente al recibir un request,
+    # no es necesario que esté corriendo (ollama ps) para considerarlo healthy.
+    return True, "ok"
 
 
 _PROVIDER_CHECKS = {
