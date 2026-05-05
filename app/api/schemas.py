@@ -22,3 +22,13 @@ class ExperimentRequest(BaseModel):
     )
     model_names: Optional[List[str]] = None
     mitigation_ab: bool = False
+    n_repeats: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description=(
+            "Cantidad de repeticiones por (modelo, caso) para análisis "
+            "de estabilidad. Si es > 1 se calcula media, IC95 y "
+            "significancia del score_gap."
+        ),
+    )

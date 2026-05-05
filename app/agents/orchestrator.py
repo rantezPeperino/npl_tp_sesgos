@@ -32,6 +32,7 @@ from app.agents import (
     normalizer,
     prompt_normalizer,
     report_renderer,
+    stability as stability_module,
 )
 from app.models import (
     Case,
@@ -72,7 +73,13 @@ def build_experiment_from_payload(payload: Dict[str, Any]) -> Experiment:
     )
 
 
-def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str], mitigation_ab: bool = False) -> ExperimentResult:
+def run_experiment(
+    pedido: str,
+    sesgo_medir: str,
+    model_names: List[str],
+    mitigation_ab: bool = False,
+    n_repeats: int = 1,
+) -> ExperimentResult:
     logger.info(f"Iniciando experimento. Sesgo a medir: {sesgo_medir}")
     logger.info(f"Modelos solicitados: {model_names}")
 
@@ -123,6 +130,20 @@ def run_experiment(pedido: str, sesgo_medir: str, model_names: List[str], mitiga
         temperature=payload["metadata"].get("temperature"),
         prompt_version=payload["metadata"].get("prompt_version"),
     )
+
+    if n_repeats > 1:
+        try:
+            stability_by_model = stability_module.run_stability_analysis(
+                cases=cases,
+                experiment=experiment,
+                model_names=healthy_models,
+                n_repeats=n_repeats,
+                seed_outputs=normalized_outputs,
+            )
+            for mr in result.model_results:
+                mr.stability = stability_by_model.get(mr.model_name)
+        except Exception as exc:
+            logger.error(f"[STABILITY] análisis falló: {exc}")
 
     if mitigation_ab:
         from app.agents.mitigation import (

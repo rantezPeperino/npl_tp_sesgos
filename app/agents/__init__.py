@@ -16,6 +16,7 @@ from app.agents import (
     prompt_normalizer,
     providers,
     report_renderer,
+    stability,
 )
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "prompt_normalizer",
     "providers",
     "report_renderer",
+    "stability",
 ]

@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
                 sesgo_medir=request.sesgo_medir,
                 model_names=model_names,
                 mitigation_ab=request.mitigation_ab,
+                n_repeats=request.n_repeats,
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
