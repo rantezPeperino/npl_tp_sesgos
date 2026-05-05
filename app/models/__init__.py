@@ -17,11 +17,13 @@ from app.models.responses import (
     NormalizedOutput,
 )
 from app.models.analysis import (
+    CaseStability,
     Comparison,
     ControlResult,
     ExperimentResult,
     MetricsResult,
     ModelExecutionResult,
+    StabilityResult,
 )
 
 __all__ = [
@@ -37,4 +39,6 @@ __all__ = [
     "MetricsResult",
     "ModelExecutionResult",
     "ExperimentResult",
+    "CaseStability",
+    "StabilityResult",
 ]

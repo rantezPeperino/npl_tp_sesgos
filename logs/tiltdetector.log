@@ -6338,3 +6338,181 @@
 [2026-05-04 02:17:46,415] [DEBUG] [httpcore.http11] response_closed.complete
 [2026-05-04 02:17:46,415] [DEBUG] [openai._base_client] HTTP Response: GET https://api.deepseek.com/models "200 OK" Headers({'content-type': 'application/json', 'content-length': '156', 'connection': 'keep-alive', 'date': 'Mon, 04 May 2026 05:17:46 GMT', 'server': 'elb', 'vary': 'origin, access-control-request-method, access-control-request-headers', 'access-control-allow-credentials': 'true', 'x-ds-trace-id': '1fa072a7e13d2038b5c4645a910e2815', 'strict-transport-security': 'max-age=31536000; includeSubDomains; preload', 'x-content-type-options': 'nosniff', 'x-cache': 'Miss from cloudfront', 'via': '1.1 fa3d60d01c521da892a423d58d4f3b14.cloudfront.net (CloudFront)', 'x-amz-cf-pop': 'EZE50-P7', 'x-amz-cf-id': 'HqoxF4reMiOsSmPG1LvIUDUeokg-OlkKQxOgtPdt8MMV70qSy5_27g=='})
 [2026-05-04 02:17:46,415] [DEBUG] [openai._base_client] request_id: None
+[2026-05-05 10:03:55,405] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:03:55,406] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:03:55,407] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:03:55,407] [INFO] [root] Experimento ID: exp_genero_f3dd5692
+[2026-05-05 10:03:55,408] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_base_hombre model=openai
+[2026-05-05 10:03:55,408] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_counterfactual_mujer model=openai
+[2026-05-05 10:03:55,408] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_negative_sin_especificar_género model=openai
+[2026-05-05 10:03:55,416] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_base_hombre model=openai
+[2026-05-05 10:03:55,416] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_counterfactual_mujer model=openai
+[2026-05-05 10:03:55,417] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f3dd5692_negative_sin_especificar_género model=openai
+[2026-05-05 10:04:53,541] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:04:53,542] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:04:53,542] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:04:53,543] [INFO] [root] Experimento ID: exp_genero_152d4b48
+[2026-05-05 10:04:53,544] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_base_hombre model=openai
+[2026-05-05 10:04:53,544] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_counterfactual_mujer model=openai
+[2026-05-05 10:04:53,545] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_negative_sin_especificar_género model=openai
+[2026-05-05 10:04:53,545] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=4 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:04:53,546] [INFO] [root] [STABILITY] repetición extra 1/3
+[2026-05-05 10:04:53,546] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_base_hombre model=openai
+[2026-05-05 10:04:53,547] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_counterfactual_mujer model=openai
+[2026-05-05 10:04:53,547] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_negative_sin_especificar_género model=openai
+[2026-05-05 10:04:53,547] [INFO] [root] [STABILITY] repetición extra 2/3
+[2026-05-05 10:04:53,547] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_base_hombre model=openai
+[2026-05-05 10:04:53,547] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_counterfactual_mujer model=openai
+[2026-05-05 10:04:53,547] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_negative_sin_especificar_género model=openai
+[2026-05-05 10:04:53,547] [INFO] [root] [STABILITY] repetición extra 3/3
+[2026-05-05 10:04:53,568] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_base_hombre model=openai
+[2026-05-05 10:04:53,568] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_counterfactual_mujer model=openai
+[2026-05-05 10:04:53,568] [DEBUG] [root] [JSON VALIDO] case=exp_genero_152d4b48_negative_sin_especificar_género model=openai
+[2026-05-05 10:04:53,572] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:04:53,573] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:04:53,573] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:04:53,573] [INFO] [root] Experimento ID: exp_genero_632577c1
+[2026-05-05 10:04:53,573] [DEBUG] [root] [JSON VALIDO] case=exp_genero_632577c1_base_hombre model=openai
+[2026-05-05 10:04:53,574] [DEBUG] [root] [JSON VALIDO] case=exp_genero_632577c1_counterfactual_mujer model=openai
+[2026-05-05 10:04:53,574] [DEBUG] [root] [JSON VALIDO] case=exp_genero_632577c1_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,567] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:05:51,569] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:05:51,570] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:05:51,571] [INFO] [root] Experimento ID: exp_genero_250dcd1d
+[2026-05-05 10:05:51,572] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_base_hombre model=openai
+[2026-05-05 10:05:51,572] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,572] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,575] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_base_hombre model=openai
+[2026-05-05 10:05:51,575] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,575] [DEBUG] [root] [JSON VALIDO] case=exp_genero_250dcd1d_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,613] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:05:51,613] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:05:51,614] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:05:51,614] [INFO] [root] Experimento ID: exp_genero_f6a2b533
+[2026-05-05 10:05:51,615] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_base_hombre model=openai
+[2026-05-05 10:05:51,615] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,615] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,615] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=4 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:05:51,616] [INFO] [root] [STABILITY] repetición extra 1/3
+[2026-05-05 10:05:51,616] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_base_hombre model=openai
+[2026-05-05 10:05:51,616] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,616] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,616] [INFO] [root] [STABILITY] repetición extra 2/3
+[2026-05-05 10:05:51,617] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_base_hombre model=openai
+[2026-05-05 10:05:51,617] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,617] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,617] [INFO] [root] [STABILITY] repetición extra 3/3
+[2026-05-05 10:05:51,638] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_base_hombre model=openai
+[2026-05-05 10:05:51,638] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,639] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f6a2b533_negative_sin_especificar_género model=openai
+[2026-05-05 10:05:51,643] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:05:51,643] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:05:51,643] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:05:51,644] [INFO] [root] Experimento ID: exp_genero_58a0bb73
+[2026-05-05 10:05:51,644] [DEBUG] [root] [JSON VALIDO] case=exp_genero_58a0bb73_base_hombre model=openai
+[2026-05-05 10:05:51,644] [DEBUG] [root] [JSON VALIDO] case=exp_genero_58a0bb73_counterfactual_mujer model=openai
+[2026-05-05 10:05:51,644] [DEBUG] [root] [JSON VALIDO] case=exp_genero_58a0bb73_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:55,407] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:09:55,409] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:09:55,409] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:09:55,410] [INFO] [root] Experimento ID: exp_genero_f784912c
+[2026-05-05 10:09:55,411] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_base_hombre model=openai
+[2026-05-05 10:09:55,411] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_counterfactual_mujer model=openai
+[2026-05-05 10:09:55,412] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:55,412] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=4 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:09:55,412] [INFO] [root] [STABILITY] repetición extra 1/3
+[2026-05-05 10:09:55,412] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_base_hombre model=openai
+[2026-05-05 10:09:55,413] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_counterfactual_mujer model=openai
+[2026-05-05 10:09:55,413] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:55,413] [INFO] [root] [STABILITY] repetición extra 2/3
+[2026-05-05 10:09:55,413] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_base_hombre model=openai
+[2026-05-05 10:09:55,413] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_counterfactual_mujer model=openai
+[2026-05-05 10:09:55,413] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:55,413] [INFO] [root] [STABILITY] repetición extra 3/3
+[2026-05-05 10:09:55,434] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_base_hombre model=openai
+[2026-05-05 10:09:55,434] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_counterfactual_mujer model=openai
+[2026-05-05 10:09:55,435] [DEBUG] [root] [JSON VALIDO] case=exp_genero_f784912c_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:56,806] [DEBUG] [asyncio] Using proactor: IocpProactor
+[2026-05-05 10:09:56,813] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:09:56,813] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:09:56,813] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:09:56,813] [INFO] [root] Experimento ID: exp_genero_3135f5dc
+[2026-05-05 10:09:56,814] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_base_hombre model=openai
+[2026-05-05 10:09:56,814] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_counterfactual_mujer model=openai
+[2026-05-05 10:09:56,814] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:56,814] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=3 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:09:56,814] [INFO] [root] [STABILITY] repetición extra 1/2
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_base_hombre model=openai
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_counterfactual_mujer model=openai
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:56,815] [INFO] [root] [STABILITY] repetición extra 2/2
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_base_hombre model=openai
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_counterfactual_mujer model=openai
+[2026-05-05 10:09:56,815] [DEBUG] [root] [JSON VALIDO] case=exp_genero_3135f5dc_negative_sin_especificar_género model=openai
+[2026-05-05 10:09:56,820] [INFO] [httpx] HTTP Request: POST http://testserver/api/experiments/run "HTTP/1.1 200 OK"
+[2026-05-05 10:09:56,830] [DEBUG] [asyncio] Using proactor: IocpProactor
+[2026-05-05 10:09:56,837] [INFO] [httpx] HTTP Request: POST http://testserver/api/experiments/run "HTTP/1.1 422 Unprocessable Entity"
+[2026-05-05 10:09:56,840] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:09:56,841] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:09:56,841] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:09:56,841] [INFO] [root] Experimento ID: exp_genero_a6a801be
+[2026-05-05 10:09:56,841] [DEBUG] [root] [JSON VALIDO] case=exp_genero_a6a801be_base_hombre model=openai
+[2026-05-05 10:09:56,841] [DEBUG] [root] [JSON VALIDO] case=exp_genero_a6a801be_counterfactual_mujer model=openai
+[2026-05-05 10:09:56,842] [DEBUG] [root] [JSON VALIDO] case=exp_genero_a6a801be_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,184] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:10:35,186] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:10:35,187] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:10:35,187] [INFO] [root] Experimento ID: exp_genero_03920a09
+[2026-05-05 10:10:35,188] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_base_hombre model=openai
+[2026-05-05 10:10:35,188] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,189] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,191] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_base_hombre model=openai
+[2026-05-05 10:10:35,192] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,192] [DEBUG] [root] [JSON VALIDO] case=exp_genero_03920a09_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,226] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:10:35,226] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:10:35,226] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:10:35,227] [INFO] [root] Experimento ID: exp_genero_b52c0a2d
+[2026-05-05 10:10:35,228] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_base_hombre model=openai
+[2026-05-05 10:10:35,228] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,228] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,229] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=4 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:10:35,229] [INFO] [root] [STABILITY] repetición extra 1/3
+[2026-05-05 10:10:35,230] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_base_hombre model=openai
+[2026-05-05 10:10:35,231] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,231] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,231] [INFO] [root] [STABILITY] repetición extra 2/3
+[2026-05-05 10:10:35,231] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_base_hombre model=openai
+[2026-05-05 10:10:35,231] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,231] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:35,231] [INFO] [root] [STABILITY] repetición extra 3/3
+[2026-05-05 10:10:35,252] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_base_hombre model=openai
+[2026-05-05 10:10:35,252] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_counterfactual_mujer model=openai
+[2026-05-05 10:10:35,253] [DEBUG] [root] [JSON VALIDO] case=exp_genero_b52c0a2d_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:36,159] [DEBUG] [asyncio] Using proactor: IocpProactor
+[2026-05-05 10:10:36,166] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:10:36,166] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:10:36,167] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:10:36,167] [INFO] [root] Experimento ID: exp_genero_31f21399
+[2026-05-05 10:10:36,167] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_base_hombre model=openai
+[2026-05-05 10:10:36,167] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_counterfactual_mujer model=openai
+[2026-05-05 10:10:36,167] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:36,168] [INFO] [root] [STABILITY] iniciando análisis con n_repeats=3 para modelos=['openai'] (reusando corrida principal: True)
+[2026-05-05 10:10:36,168] [INFO] [root] [STABILITY] repetición extra 1/2
+[2026-05-05 10:10:36,168] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_base_hombre model=openai
+[2026-05-05 10:10:36,168] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_counterfactual_mujer model=openai
+[2026-05-05 10:10:36,168] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:36,169] [INFO] [root] [STABILITY] repetición extra 2/2
+[2026-05-05 10:10:36,169] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_base_hombre model=openai
+[2026-05-05 10:10:36,169] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_counterfactual_mujer model=openai
+[2026-05-05 10:10:36,169] [DEBUG] [root] [JSON VALIDO] case=exp_genero_31f21399_negative_sin_especificar_género model=openai
+[2026-05-05 10:10:36,174] [INFO] [httpx] HTTP Request: POST http://testserver/api/experiments/run "HTTP/1.1 200 OK"
+[2026-05-05 10:10:36,184] [DEBUG] [asyncio] Using proactor: IocpProactor
+[2026-05-05 10:10:36,191] [INFO] [httpx] HTTP Request: POST http://testserver/api/experiments/run "HTTP/1.1 422 Unprocessable Entity"
+[2026-05-05 10:10:36,193] [INFO] [root] Iniciando experimento. Sesgo a medir: genero
+[2026-05-05 10:10:36,194] [INFO] [root] Modelos solicitados: ['openai']
+[2026-05-05 10:10:36,194] [INFO] [root] Modelos disponibles: ['openai']
+[2026-05-05 10:10:36,194] [INFO] [root] Experimento ID: exp_genero_0f153d13
+[2026-05-05 10:10:36,195] [DEBUG] [root] [JSON VALIDO] case=exp_genero_0f153d13_base_hombre model=openai
+[2026-05-05 10:10:36,195] [DEBUG] [root] [JSON VALIDO] case=exp_genero_0f153d13_counterfactual_mujer model=openai
+[2026-05-05 10:10:36,195] [DEBUG] [root] [JSON VALIDO] case=exp_genero_0f153d13_negative_sin_especificar_género model=openai

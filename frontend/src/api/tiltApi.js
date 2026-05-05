@@ -17,11 +17,11 @@ async function handleJson(res) {
   return body;
 }
 
-export async function runExperiment({ pedido, sesgo_medir, model_names, mitigation_ab = false }) {
+export async function runExperiment({ pedido, sesgo_medir, model_names, mitigation_ab = false, n_repeats = 1 }) {
   const res = await fetch(`${BASE}/experiments/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pedido, sesgo_medir, model_names, mitigation_ab }),
+    body: JSON.stringify({ pedido, sesgo_medir, model_names, mitigation_ab, n_repeats }),
   });
   return handleJson(res);
 }

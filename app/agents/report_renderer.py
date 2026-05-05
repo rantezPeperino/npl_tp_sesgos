@@ -127,8 +127,35 @@ def _render_model(mr: ModelExecutionResult, cases: List[Case]) -> List[str]:
     else:
         lines.append("(comparación / métricas no disponibles)")
 
+    if mr.stability is not None:
+        lines.append("")
+        lines.extend(_render_stability_block(mr.stability))
+
     lines.append("")
     return lines
+
+
+def _render_stability_block(stab) -> List[str]:
+    out: List[str] = []
+    out.append(_DASH)
+    out.append(f"[ESTABILIDAD] n_repeats={stab.n_repeats}")
+    for c in stab.cases:
+        out.append(
+            f"  {c.case_type:<14} "
+            f"score={c.score_mean:.2f} ± {c.score_stdev:.2f}  "
+            f"IC95=[{c.score_ci95_low:.2f}, {c.score_ci95_high:.2f}]  "
+            f"decisión modal='{c.decision_mode}' "
+            f"({c.decision_consistency * 100:.0f}% consistencia)"
+        )
+    if stab.verdict == "sin_datos":
+        out.append("  delta base-cf: no se pudieron calcular estadísticos.")
+    else:
+        out.append(
+            f"  delta base-cf: {stab.delta_mean:+.2f}  "
+            f"IC95=[{stab.delta_ci95_low:+.2f}, {stab.delta_ci95_high:+.2f}]  "
+            f"=> {stab.verdict}"
+        )
+    return out
 
 
 def render_terminal_report(result: ExperimentResult) -> str:

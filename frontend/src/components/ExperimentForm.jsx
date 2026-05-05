@@ -120,6 +120,7 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
   const [sesgo, setSesgo] = useState("genero");
   const [selectedForExperiment, setSelectedForExperiment] = useState(() => new Set());
   const [mitigationAb, setMitigationAb] = useState(false);
+  const [nRepeats, setNRepeats] = useState(1);
   const [validationError, setValidationError] = useState(null);
   const [modelErrors, setModelErrors] = useState({});
   const [modelLoading, setModelLoading] = useState({});
@@ -282,6 +283,7 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
         sesgo_medir: sesgo,
         model_names: finalModels,
         mitigation_ab: mitigationAb,
+        n_repeats: nRepeats,
       });
     } catch {
       // error se propaga vía hook
@@ -420,6 +422,34 @@ export default function ExperimentForm({ modelsData, enabledModels, toggleModel,
             </span>
           </span>
         </label>
+      </div>
+
+      <div>
+        <label
+          htmlFor="n_repeats"
+          className="mb-1 block text-sm font-medium text-slate-800"
+        >
+          Repeticiones por caso (análisis de estabilidad)
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            id="n_repeats"
+            type="number"
+            min={1}
+            max={10}
+            value={nRepeats}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (Number.isFinite(v)) setNRepeats(Math.min(10, Math.max(1, v)));
+            }}
+            className="w-20 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="text-xs text-slate-500">
+            Si es &gt; 1, cada caso se ejecuta varias veces para calcular media,
+            IC95 y significancia estadística del score_gap. Multiplica el costo
+            en tokens por este factor.
+          </p>
+        </div>
       </div>
 
       {(validationError || error) && (

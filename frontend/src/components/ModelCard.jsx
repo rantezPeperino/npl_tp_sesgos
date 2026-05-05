@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CaseDetailDrawer from "./CaseDetailDrawer.jsx";
 import CasesRadarChart from "./CasesRadarChart.jsx";
+import StabilityPanel from "./StabilityPanel.jsx";
 
 const INTENSITY_CLASSES = {
   none: "bg-slate-100 text-slate-700 border-slate-200",
@@ -170,6 +171,10 @@ export default function ModelCard({ modelResult, cases, biasDimension }) {
       </p>
 
       <CasesRadarChart modelResult={modelResult} cases={cases} />
+
+      {modelResult.stability && (
+        <StabilityPanel stability={modelResult.stability} />
+      )}
 
       {modelResult.mitigation && (() => {
         const m = modelResult.mitigation;
